@@ -1,0 +1,18 @@
+﻿ 1. Testing BlazorCMS.API (Backend)
+
+Register a User
+Endpoint: POST /api/auth/register
+
+Request Body:
+ https://localhost:7250/api/auth/register
+ {
+  "fullName": "John Doe",
+  "email": "johndoe@example.com",
+  "password": "StrongPassword123!",
+  "ConfirmPassword": "StrongPassword123!"
+}
+
+Expected Response:
+{
+    "message": "Registration successful. Please verify your email."
+}

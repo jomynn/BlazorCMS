@@ -96,6 +96,12 @@ builder.Services.AddInfrastructure();
 
 var app = builder.Build();
 
+// 🔹 Call DatabaseInitializer Directly
+using (var scope = app.Services.CreateScope())
+{
+    await DatabaseInitializer.InitializeAsync(scope.ServiceProvider);
+}
+
 // 🔹 Add a Root Endpoint (Redirect to Swagger)
 app.MapGet("/", () => Results.Redirect("/swagger"));
 

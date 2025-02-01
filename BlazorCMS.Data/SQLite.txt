@@ -1,0 +1,93 @@
+﻿-- 🔹 Users Table (Stores User Information)
+CREATE TABLE AspNetUsers (
+    Id TEXT NOT NULL PRIMARY KEY,
+    UserName TEXT NULL,
+    NormalizedUserName TEXT NULL,
+    Email TEXT NULL,
+    NormalizedEmail TEXT NULL,
+    EmailConfirmed INTEGER NOT NULL DEFAULT 0,
+    PasswordHash TEXT NULL,
+    SecurityStamp TEXT NULL,
+    ConcurrencyStamp TEXT NULL,
+    PhoneNumber TEXT NULL,
+    PhoneNumberConfirmed INTEGER NOT NULL DEFAULT 0,
+    TwoFactorEnabled INTEGER NOT NULL DEFAULT 0,
+    LockoutEnd TEXT NULL,
+    LockoutEnabled INTEGER NOT NULL DEFAULT 0,
+    AccessFailedCount INTEGER NOT NULL DEFAULT 0,
+    FullName TEXT NULL,
+    RegisteredOn TEXT DEFAULT (datetime('now')) -- Stores registration date
+);
+
+-- 🔹 Roles Table (Stores Role Information)
+CREATE TABLE AspNetRoles (
+    Id TEXT NOT NULL PRIMARY KEY,
+    Name TEXT NULL,
+    NormalizedName TEXT NULL,
+    ConcurrencyStamp TEXT NULL
+);
+
+-- 🔹 UserRoles Table (Links Users to Roles)
+CREATE TABLE AspNetUserRoles (
+    UserId TEXT NOT NULL,
+    RoleId TEXT NOT NULL,
+    PRIMARY KEY (UserId, RoleId),
+    FOREIGN KEY (UserId) REFERENCES AspNetUsers (Id) ON DELETE CASCADE,
+    FOREIGN KEY (RoleId) REFERENCES AspNetRoles (Id) ON DELETE CASCADE
+);
+
+-- 🔹 User Claims Table
+CREATE TABLE AspNetUserClaims (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserId TEXT NOT NULL,
+    ClaimType TEXT NULL,
+    ClaimValue TEXT NULL,
+    FOREIGN KEY (UserId) REFERENCES AspNetUsers (Id) ON DELETE CASCADE
+);
+
+-- 🔹 User Logins Table (For External Login Providers)
+CREATE TABLE AspNetUserLogins (
+    LoginProvider TEXT NOT NULL,
+    ProviderKey TEXT NOT NULL,
+    ProviderDisplayName TEXT NULL,
+    UserId TEXT NOT NULL,
+    PRIMARY KEY (LoginProvider, ProviderKey),
+    FOREIGN KEY (UserId) REFERENCES AspNetUsers (Id) ON DELETE CASCADE
+);
+
+-- 🔹 User Tokens Table (For Authentication Tokens)
+CREATE TABLE AspNetUserTokens (
+    UserId TEXT NOT NULL,
+    LoginProvider TEXT NOT NULL,
+    Name TEXT NOT NULL,
+    Value TEXT NULL,
+    PRIMARY KEY (UserId, LoginProvider, Name),
+    FOREIGN KEY (UserId) REFERENCES AspNetUsers (Id) ON DELETE CASCADE
+);
+
+-- 🔹 Role Claims Table (Stores Claims for Roles)
+CREATE TABLE AspNetRoleClaims (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    RoleId TEXT NOT NULL,
+    ClaimType TEXT NULL,
+    ClaimValue TEXT NULL,
+    FOREIGN KEY (RoleId) REFERENCES AspNetRoles (Id) ON DELETE CASCADE
+);
+
+-- 🔹 BlogPosts Table (Stores Blog Content)
+CREATE TABLE BlogPosts (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Title TEXT NOT NULL,
+    Content TEXT NOT NULL,
+    AuthorId TEXT NOT NULL,
+    CreatedAt TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (AuthorId) REFERENCES AspNetUsers (Id) ON DELETE CASCADE
+);
+
+-- 🔹 Pages Table (For CMS Pages)
+CREATE TABLE Pages (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Title TEXT NOT NULL,
+    Content TEXT NOT NULL,
+    CreatedAt TEXT DEFAULT (datetime('now'))
+);
