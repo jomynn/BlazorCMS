@@ -1,34 +1,26 @@
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using BlazorCMS.Admin;
-using BlazorCMS.Client;
-using AdminServices = BlazorCMS.Admin.Services;
-using ClientServices = BlazorCMS.Client.Services;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure services for both Admin (Blazor Server) and Client (Blazor WebAssembly)
+// 🔹 Configure Logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+builder.Logging.AddEventSourceLogger();
+
+// 🔹 Add Blazor Services
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
-
-// Register Blazor Server Admin
-builder.Services.AddServerSideBlazor();
-
-// Register Blazor WebAssembly Client
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:5001/api/") });
-
-// Use explicit namespaces to resolve ambiguity
-builder.Services.AddScoped<ClientServices.ClientAuthService>();
-builder.Services.AddScoped<ClientServices.ClientBlogService>();
-builder.Services.AddScoped<ClientServices.ClientPageService>();
-
-builder.Services.AddScoped<AdminServices.AdminAuthService>();
-builder.Services.AddScoped<AdminServices.AdminBlogService>();
-builder.Services.AddScoped<AdminServices.AdminPageService>();
+builder.Services.AddServerSideBlazor(); // Blazor Server for Admin Panel
 
 var app = builder.Build();
 
-// Configure middleware
+// 🔹 Middleware Configuration
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -36,14 +28,28 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+app.UseStaticFiles(); // Serve static files (CSS, JS)
 app.UseRouting();
 
-// Map Blazor Server Admin
-app.MapBlazorHub();
-app.MapFallbackToPage("/admin", "/Admin");
+// 🔹 Serve Blazor WebAssembly Client manually
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"), appBuilder =>
+{
+    appBuilder.UseStaticFiles();
+    appBuilder.UseDefaultFiles();
+});
 
-// Map Blazor WebAssembly Client
-app.MapFallbackToFile("index.html");
+// 🔹 Configure API & Blazor Endpoints
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllers();
+    endpoints.MapRazorPages();
+    endpoints.MapBlazorHub(); // Blazor Server SignalR
+    endpoints.MapFallbackToFile("index.html"); // Blazor WebAssembly Client
+});
 
+// 🔹 Log Application Start
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("🚀 BlazorCMS.Host is running on {Url}", app.Urls);
+
+// 🔹 Run Application
 app.Run();
