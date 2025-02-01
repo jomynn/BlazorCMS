@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace BlazorCMS.Shared.Models
 {
-    public class ApplicationUser
+    public class ApplicationUser : IdentityUser
     {
         public string Id { get; set; }
         public string FullName { get; set; }
