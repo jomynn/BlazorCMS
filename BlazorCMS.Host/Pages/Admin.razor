@@ -1,0 +1,15 @@
+﻿@page "/admin"
+@namespace BlazorCMS.Host.Pages
+@inject NavigationManager Navigation
+
+<MudContainer>
+    <MudTypography Variant="h4">Admin Panel</MudTypography>
+    <MudButton Color="Primary" OnClick="GoToDashboard">Go to Dashboard</MudButton>
+</MudContainer>
+
+@code {
+    void GoToDashboard()
+    {
+        Navigation.NavigateTo("/admin/dashboard");
+    }
+}

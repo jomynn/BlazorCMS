@@ -1,0 +1,28 @@
+﻿@page "/"
+@using BlazorCMS.Client.Services
+@using BlazorCMS.Shared.DTOs
+@inject ClientBlogService ClientBlogService
+
+<MudCard>
+    <MudCardContent>
+        <MudTypography Variant="h4">Latest Blog Posts</MudTypography>
+        <MudList>
+            @foreach (var post in blogPosts)
+            {
+                <MudListItem>
+                    <MudLink Href=@($"/blog/{post.Title}")>@post.Title</MudLink>
+                    <span> by @post.Author</span>
+                </MudListItem>
+            }
+        </MudList>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<BlogPostDTO> blogPosts = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        blogPosts = await ClientBlogService.GetAllBlogsAsync();
+    }
+}

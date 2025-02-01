@@ -1,0 +1,13 @@
+﻿@using BlazorCMS.Shared.DTOs
+@code {
+    [Parameter] public BlogPostDTO Blog { get; set; }
+}
+
+<MudCard>
+    <MudCardContent>
+        <MudTypography Variant="h4">@Blog.Title</MudTypography>
+        <MudText>by @Blog.Author - @Blog.PublishedDate.ToString("MMMM dd, yyyy")</MudText>
+        <MudDivider />
+        <MudText>@(new MarkupString(Blog.Content))</MudText>
+    </MudCardContent>
+</MudCard>

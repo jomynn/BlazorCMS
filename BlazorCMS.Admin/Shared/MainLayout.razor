@@ -1,0 +1,17 @@
+﻿@inherits LayoutComponentBase
+
+<MudLayout>
+    <MudAppBar Color="Primary">
+        <Navbar />
+    </MudAppBar>
+
+    <MudDrawer Open="true" Color="Primary">
+        <Sidebar />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer>
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>

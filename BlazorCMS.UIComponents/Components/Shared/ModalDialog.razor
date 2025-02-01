@@ -1,0 +1,15 @@
+﻿@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> OnClose { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+}
+
+<MudDialog Open="@IsOpen">
+    <MudDialogTitle>Modal Dialog</MudDialogTitle>
+    <MudDialogContent>
+        @ChildContent
+    </MudDialogContent>
+    <MudDialogActions>
+        <MudButton Color="Primary" OnClick="() => OnClose.InvokeAsync(false)">Close</MudButton>
+    </MudDialogActions>
+</MudDialog>

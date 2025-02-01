@@ -1,0 +1,6 @@
+﻿@code {
+    [Parameter] public string Text { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+}
+
+<MudButton Color="Primary" OnClick="OnClick.InvokeAsync">@Text</MudButton>

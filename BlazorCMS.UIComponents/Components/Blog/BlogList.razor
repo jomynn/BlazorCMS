@@ -1,0 +1,19 @@
+﻿@using BlazorCMS.Shared.DTOs
+@code {
+    [Parameter] public List<BlogPostDTO> BlogPosts { get; set; }
+}
+
+<MudCard>
+    <MudCardContent>
+        <MudTypography Variant="h4">Latest Blog Posts</MudTypography>
+        <MudList>
+            @foreach (var post in BlogPosts)
+            {
+                <MudListItem>
+                    <MudLink Href="/blog/@post.Id">@post.Title</MudLink>
+                    <span> by @post.Author</span>
+                </MudListItem>
+            }
+        </MudList>
+    </MudCardContent>
+</MudCard>

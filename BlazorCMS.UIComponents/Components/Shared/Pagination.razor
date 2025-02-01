@@ -1,0 +1,7 @@
+﻿@code {
+    [Parameter] public int CurrentPage { get; set; }
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+}
+
+<MudPagination Page="@CurrentPage" PageCount="@TotalPages" OnPageChanged="OnPageChanged.InvokeAsync" />

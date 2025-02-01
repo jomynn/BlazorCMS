@@ -1,0 +1,28 @@
+﻿@page "/register"
+@using BlazorCMS.Client.Services
+@using BlazorCMS.Shared.DTOs
+@using MudBlazor
+@inject ClientAuthService ClientAuthService
+@inject NavigationManager Navigation
+
+<MudCard>
+    <MudCardContent>
+        <MudTextField @bind-Value="register.FullName" Label="Full Name" />
+        <MudTextField @bind-Value="register.Email" Label="Email" />
+        <MudTextField @bind-Value="register.Password" Label="Password" Type="password" />
+        <MudTextField @bind-Value="register.ConfirmPassword" Label="Confirm Password" Type="password" />
+        <MudButton Color="Color.Primary" OnClick="RegisterUser">Register</MudButton>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private RegisterDTO register = new();
+
+    private async Task RegisterUser()
+    {
+        if (await ClientAuthService.RegisterAsync(register))
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+}

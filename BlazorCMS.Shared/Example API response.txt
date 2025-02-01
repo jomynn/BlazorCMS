@@ -1,0 +1,14 @@
+﻿Example API response:
+
+json
+ 
+{
+  "success": true,
+  "message": "Blog post retrieved successfully",
+  "data": {
+    "id": 1,
+    "title": "My First Blog Post",
+    "author": "John Doe",
+    "publishedDate": "2025-01-31T12:00:00Z"
+  }
+}

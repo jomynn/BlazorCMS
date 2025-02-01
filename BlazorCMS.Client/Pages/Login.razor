@@ -1,0 +1,26 @@
+﻿@page "/login"
+@using BlazorCMS.Client.Services
+@using BlazorCMS.Shared.DTOs
+@using MudBlazor
+@inject ClientAuthService ClientAuthService
+@inject NavigationManager Navigation
+
+<MudCard>
+    <MudCardContent>
+        <MudTextField @bind-Value="login.Email" Label="Email" />
+        <MudTextField @bind-Value="login.Password" Label="Password" Type="password" />
+        <MudButton Color="MudBlazor.Color.Primary" OnClick="LoginUser">Login</MudButton>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private LoginDTO login = new();
+
+    private async Task LoginUser()
+    {
+        if (await ClientAuthService.LoginAsync(login))
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+}

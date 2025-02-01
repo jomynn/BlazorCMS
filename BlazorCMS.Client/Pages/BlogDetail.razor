@@ -1,0 +1,23 @@
+﻿@page "/blog/{id:int}"
+@using BlazorCMS.Client.Services
+@using BlazorCMS.Shared.DTOs
+@inject ClientBlogService ClientBlogService
+
+<MudCard>
+    <MudCardContent>
+        <MudTypography Variant="h4">@blog?.Title</MudTypography>
+        <MudText>by @blog?.Author - @blog?.PublishedDate.ToString("MMMM dd, yyyy")</MudText>
+        <MudDivider />
+        <MudText>@(new MarkupString(blog?.Content))</MudText>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private BlogPostDTO blog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        blog = await ClientBlogService.GetBlogByIdAsync(Id);
+    }
+}

@@ -1,0 +1,49 @@
+﻿@page "/admin/blogposts"
+@using BlazorCMS.Admin.Services
+@using BlazorCMS.Shared.DTOs
+@inject BlazorCMS.Admin.Services.AdminBlogService BlogService
+@inject BlazorCMS.Admin.Services.AdminPageService PageService
+@inject AdminBlogService BlogService
+@inject NavigationManager Navigation  // Inject navigation
+
+<MudCard>
+    <MudCardContent>
+        <MudTypography Variant="h4">Manage Blog Posts</MudTypography>
+        <MudButton OnClick="CreateNewPost">New Post</MudButton>
+        <MudTable Items="@blogPosts">
+    <MudHead>
+        <MudTh>Title</MudTh>
+        <MudTh>Author</MudTh>
+        <MudTh>Actions</MudTh>
+    </MudHead>
+
+    <MudBody>
+        @foreach (var post in blogPosts)
+        {
+            <MudTr>
+                <MudTd>@post.Title</MudTd>
+                <MudTd>@post.Author</MudTd>
+                <MudTd>
+                    <MudButton Color="Primary" OnClick="() => EditPost(post.Id)">Edit</MudButton>
+                    <MudButton Color="Error" OnClick="() => DeletePost(post.Id)">Delete</MudButton>
+                </MudTd>
+            </MudTr>
+        }
+    </MudBody>
+</MudTable>
+
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<BlogPostDTO> blogPosts = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        blogPosts = await BlogService.GetAllBlogsAsync();
+    }
+
+    void CreateNewPost() => Navigation.NavigateTo("/admin/blogposts/new");
+    void EditPost(int id) => Navigation.NavigateTo($"/admin/blogposts/edit/{id}");
+    async Task DeletePost(int id) => await BlogService.DeleteBlogAsync(id);
+}

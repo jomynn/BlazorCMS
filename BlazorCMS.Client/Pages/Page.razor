@@ -1,0 +1,22 @@
+﻿@page "/page/{id:int}"
+@using BlazorCMS.Client.Services
+@using BlazorCMS.Shared.DTOs
+@inject ClientPageService PageService
+
+<MudCard>
+    <MudCardContent>
+        <MudTypography Variant="h4">@pageData?.Title</MudTypography>
+        <MudDivider />
+        <MudText>@(new MarkupString(pageData?.Content))</MudText>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private PageDTO pageData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        pageData = await PageService.GetPageByIdAsync(Id);
+    }
+}

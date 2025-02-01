@@ -1,0 +1,12 @@
+﻿@using BlazorCMS.Shared.DTOs
+@code {
+    [Parameter] public PageDTO Page { get; set; }
+}
+
+<MudCard>
+    <MudCardContent>
+        <MudTypography Variant="h4">@Page.Title</MudTypography>
+        <MudDivider />
+        <MudText>@(new MarkupString(Page.Content))</MudText>
+    </MudCardContent>
+</MudCard>
