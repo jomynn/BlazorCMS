@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using BlazorCMS.Shared.Models;
 using BlazorCMS.Data.Models;
 
 namespace BlazorCMS.Data

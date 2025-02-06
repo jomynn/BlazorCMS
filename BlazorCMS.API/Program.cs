@@ -1,14 +1,13 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
+﻿using BlazorCMS.API.Services;
 using BlazorCMS.Data;
+using BlazorCMS.Data.Models; // Add missing services namespace
 using BlazorCMS.Infrastructure;
-using BlazorCMS.Data.Models; // Ensure correct namespace for ApplicationUser
-using BlazorCMS.API.Configuration;
-using BlazorCMS.API.Services; // Add missing services namespace
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -16,3 +16,18 @@ Expected Response:
 {
     "message": "Registration successful. Please verify your email."
 }
+
+
+
+https://localhost:7250/api/auth/login
+{
+  "email": "johndoe@example.com",
+  "password": "StrongPassword123!"
+}
+
+
+
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlMzIzNjQ5ZC1kOThhLTRmYmQtODFjMy01ZTgyNTU3ODYwZWUiLCJlbWFpbCI6ImpvaG5kb2VAZXhhbXBsZS5jb20iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJVc2VyIiwianRpIjoiODFkOTUxZWMtMDc2Mi00YTRjLWJjYzItMzZhNDA4ZTBmYTdjIiwiZXhwIjoxNzM4NzcxODIwLCJpc3MiOiJodHRwczovL2xvY2FsaG9zdDo3MjUwIiwiYXVkIjoiaHR0cHM6Ly9sb2NhbGhvc3Q6NzI1MCJ9.h2PnPomzbMlFprxkRd-idsmpH37hVZkck85Xv7wwIG4",
+    "message": "Login successful"
+}

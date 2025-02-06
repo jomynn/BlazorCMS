@@ -1,11 +1,8 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using BlazorCMS.Shared.DTOs;
+﻿using BlazorCMS.Data.Models;
 using BlazorCMS.Infrastructure.Authentication;
-using System.Threading.Tasks;
-using BlazorCMS.Data.Models;
-using System.Linq;
-using System;
+using BlazorCMS.Shared.DTOs;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BlazorCMS.API.Controllers
 {

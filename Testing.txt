@@ -1,0 +1,91 @@
+﻿ 1. Identify Project Dependencies
+Since BlazorCMS is a multi-project solution, ensure:
+
+Each project has its own dependencies.
+Each project can run independently when needed.
+Here are the main projects in BlazorCMS:
+
+Project	Type	Dependencies
+BlazorCMS.API	Web API (ASP.NET Core)	BlazorCMS.Data, BlazorCMS.Infrastructure
+BlazorCMS.Admin	Blazor Server Admin Panel	BlazorCMS.Data, BlazorCMS.Infrastructure
+BlazorCMS.Client	Blazor WebAssembly	BlazorCMS.API (for API calls)
+BlazorCMS.Data	Entity Framework & Models	Used by API, Admin, and Client
+BlazorCMS.Infrastructure	Shared Services	Used by API, Admin, and Client
+✅ Each project should compile and run independently.
+
+✅ 2. Run a Single Project (Example: BlazorCMS.API)
+If you want to test only the API, use:
+
+🔹 1️⃣ Run API from Terminal
+sh
+คัดลอก
+แก้ไข
+dotnet run --project BlazorCMS.API
+✅ This starts the API on https://localhost:7250.
+
+🔹 2️⃣ Test API in Postman
+Use Postman or cURL to test endpoints:
+
+sh
+คัดลอก
+แก้ไข
+curl -X GET https://localhost:7250/api/auth/test
+✅ Ensures API is working without running BlazorCMS.Client or Admin.
+
+✅ 3. Run BlazorCMS.Admin Separately
+Since BlazorCMS.Admin is a Blazor Server app, run:
+
+sh
+คัดลอก
+แก้ไข
+dotnet run --project BlazorCMS.Admin
+✅ This starts the Admin panel on https://localhost:5001.
+
+Test in the browser:
+
+arduino
+คัดลอก
+แก้ไข
+https://localhost:5001
+✅ 4. Run BlazorCMS.Client (WebAssembly)
+To run only the Blazor WebAssembly client, use:
+
+sh
+คัดลอก
+แก้ไข
+dotnet run --project BlazorCMS.Client
+✅ This starts the frontend without running the API.
+
+Since Client depends on API, mock the API using json-server or Postman Mock Server if needed.
+
+✅ 5. Debugging a Single Project in Visual Studio
+1️⃣ Open launchSettings.json
+Modify launchSettings.json in Properties to disable multi-project startup.
+
+2️⃣ Select the Target Project
+In Visual Studio:
+
+Right-click on BlazorCMS.API (or another project).
+Click "Set as Startup Project".
+Run F5 (Start Debugging).
+✅ Only the selected project will start.
+
+✅ 6. Run Multiple Projects (API + Client)
+If you need to run both the API and Client, use:
+
+sh
+คัดลอก
+แก้ไข
+dotnet run --project BlazorCMS.API &
+dotnet run --project BlazorCMS.Client
+✅ Runs API and Client in parallel (& runs API in the background).
+
+🚀 Summary
+Task	Command
+🔹 Run Only API	dotnet run --project BlazorCMS.API
+🔹 Run Only Admin	dotnet run --project BlazorCMS.Admin
+🔹 Run Only Client	dotnet run --project BlazorCMS.Client
+🔹 Run API + Client Together	dotnet run --project BlazorCMS.API & dotnet run --project BlazorCMS.Client
+🔹 Debug Single Project in VS	Set as Startup Project, then Run
+🚀 Now, you can test each project separately!
+Would you like to automate testing using xUnit or Postman? 🔥

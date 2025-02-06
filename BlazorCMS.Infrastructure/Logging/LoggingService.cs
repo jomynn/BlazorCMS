@@ -1,23 +1,29 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
+﻿using Microsoft.Extensions.Logging;
 
 namespace BlazorCMS.Infrastructure.Logging
 {
     public class LoggingService
     {
-        private readonly string _logFilePath;
+        private readonly ILogger<LoggingService> _logger;
 
-        public LoggingService()
+        public LoggingService(ILogger<LoggingService> logger)
         {
-            _logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs", "app.log");
-            Directory.CreateDirectory(Path.GetDirectoryName(_logFilePath));
+            _logger = logger;
         }
 
-        public async Task LogAsync(string message)
+        public void LogInfo(string message)
         {
-            string logMessage = $"{DateTime.UtcNow}: {message}{Environment.NewLine}";
-            await File.AppendAllTextAsync(_logFilePath, logMessage);
+            _logger.LogInformation(message);
+        }
+
+        public void LogWarning(string message)
+        {
+            _logger.LogWarning(message);
+        }
+
+        public void LogError(string message)
+        {
+            _logger.LogError(message);
         }
     }
 }

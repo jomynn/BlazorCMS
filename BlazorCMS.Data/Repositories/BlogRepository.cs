@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using BlazorCMS.Data.Models;
+﻿using BlazorCMS.Data.Models;
+using BlazorCMS.Shared.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlazorCMS.Data.Repositories
 {

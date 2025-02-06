@@ -1,10 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using BlazorCMS.Shared.DTOs;
-using BlazorCMS.Infrastructure.Logging;
+﻿using BlazorCMS.Data.Models;
 using BlazorCMS.Data.Repositories;
-using BlazorCMS.Data.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using BlazorCMS.Infrastructure.Logging;
+using BlazorCMS.Shared.DTOs;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BlazorCMS.API.Controllers
 {
@@ -21,8 +19,35 @@ namespace BlazorCMS.API.Controllers
             _logger = logger;
         }
 
+        //// Get all blogs
         [HttpGet]
-        public async Task<IEnumerable<BlogPost>> GetAllBlogs() => await _repository.GetAllAsync();
+        public async Task<IEnumerable<BlogPost>> GetAllBlogs_0() => await _repository.GetAllAsync();
+
+        //// Get all blogs
+        //[HttpGet]
+        //public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetAllBlogs()
+        //{
+        //    var blogs = await _repository.GetAllAsync();
+
+        //    if (blogs == null || blogs.Count == 0)
+        //    {
+        //        _logger.LogInfo("No blogs found.");
+        //        return NotFound(new { message = "No blog posts available." });
+        //    }
+
+        //    // Convert BlogPost to BlogPostDTO
+        //    var blogDtos = blogs.ConvertAll(blog => new BlogPostDTO
+        //    {
+        //        Id = blog.Id,
+        //        Title = blog.Title,
+        //        Content = blog.Content,
+        //        Author = blog.Author,
+        //        PublishedDate = blog.PublishedDate,
+        //        IsPublished = blog.IsPublished
+        //    });
+
+        //    return Ok(blogDtos);
+        //}
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetBlog(int id)
@@ -32,10 +57,36 @@ namespace BlazorCMS.API.Controllers
             return Ok(blog);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateBlog([FromBody] BlogPostDTO blogDto)
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetBlogById(int id)
         {
-            var blog = new BlogPost
+            var blog = await _repository.GetByIdAsync(id);
+            if (blog == null)
+            {
+                _logger.LogWarning($"Blog post with ID {id} not found.");
+                return NotFound(new { message = "Blog post not found" });
+            }
+
+            var blogDto = new BlogPostDTO
+            {
+                Id = blog.Id,
+                Title = blog.Title,
+                Content = blog.Content,
+                Author = blog.Author,
+                PublishedDate = blog.PublishedDate,
+                IsPublished = blog.IsPublished
+            };
+
+            return Ok(blogDto);
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> CreateBlog([FromBody] BlogPost blogDto)
+        {
+
+
+            var blogPost = new BlogPost
             {
                 Title = blogDto.Title,
                 Content = blogDto.Content,
@@ -44,8 +95,8 @@ namespace BlazorCMS.API.Controllers
                 IsPublished = blogDto.IsPublished
             };
 
-            await _repository.AddAsync(blog);
-            return CreatedAtAction(nameof(GetBlog), new { id = blog.Id }, blog);
+            await _repository.AddAsync(blogPost);
+            return CreatedAtAction(nameof(GetBlogById), new { id = blogPost.Id }, blogDto);
         }
     }
 }

@@ -1,11 +1,8 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using BlazorCMS.Data.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.IO;
-using System.Threading.Tasks;
-using BlazorCMS.Data.Models;
 
 namespace BlazorCMS.Data
 {
