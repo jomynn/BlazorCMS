@@ -57,6 +57,7 @@ namespace BlazorCMS.API.Controllers
             return Ok(blog);
         }
 
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetBlogById(int id)
         {
@@ -82,16 +83,25 @@ namespace BlazorCMS.API.Controllers
 
 
         [HttpPost]
-        public async Task<IActionResult> CreateBlog([FromBody] BlogPost blogDto)
+        public async Task<IActionResult> CreateBlog([FromBody] BlogPostDTO blogDto)
         {
+            if (blogDto == null)
+            {
+                return BadRequest(new { message = "Invalid blog data." });
+            }
 
+            if (string.IsNullOrEmpty(blogDto.AuthorId))
+            {
+                return BadRequest(new { message = "AuthorId is required." });
+            }
 
             var blogPost = new BlogPost
             {
                 Title = blogDto.Title,
                 Content = blogDto.Content,
+                AuthorId = blogDto.AuthorId, // Ensure this is assigned
                 Author = blogDto.Author,
-                PublishedDate = blogDto.PublishedDate,
+                PublishedDate = blogDto.PublishedDate ?? DateTime.UtcNow,
                 IsPublished = blogDto.IsPublished
             };
 

@@ -1,9 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using BlazorCMS.Shared.DTOs;
+﻿using BlazorCMS.Data.Models;
 using BlazorCMS.Data.Repositories;
-using BlazorCMS.Data.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using BlazorCMS.Shared.DTOs;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BlazorCMS.API.Controllers
 {

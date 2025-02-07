@@ -6,7 +6,7 @@
 <MudCard>
     <MudCardContent>
         <MudTypography Variant="h4">@blog?.Title</MudTypography>
-        <MudText>by @blog?.Author - @blog?.PublishedDate.ToString("MMMM dd, yyyy")</MudText>
+        <MudText>by @blog?.Author - @blog?.PublishedDate?.ToString("MMMM dd, yyyy")</MudText>
         <MudDivider />
         <MudText>@(new MarkupString(blog?.Content))</MudText>
     </MudCardContent>

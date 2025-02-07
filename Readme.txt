@@ -122,3 +122,20 @@ BlazorCMS/
 ✅ Shared Models (BlazorCMS.Shared) → DTOs & models
 ✅ Reusable UI (BlazorCMS.UIComponents) → Custom Blazor components
 Would you like a Dockerfile for deployment or unit tests for services next? 🚀
+
+
+
+DROP TABLE IF EXISTS BlogPosts;
+
+CREATE TABLE BlogPosts (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Title TEXT NOT NULL,
+    Content TEXT NOT NULL,
+    AuthorId TEXT NOT NULL,  -- Fixed: Ensuring NOT NULL
+    Author TEXT NOT NULL,
+    CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+    PublishedDate TEXT DEFAULT NULL,
+    IsPublished INTEGER NOT NULL DEFAULT 0
+);
+
+

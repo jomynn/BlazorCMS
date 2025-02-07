@@ -89,3 +89,27 @@ Task	Command
 🔹 Debug Single Project in VS	Set as Startup Project, then Run
 🚀 Now, you can test each project separately!
 Would you like to automate testing using xUnit or Postman? 🔥
+
+
+
+
+https://localhost:7250/api/blog
+Request:
+{
+  "title": "New Blog Post",
+  "content": "This is a new blog post.",
+  "author": "user-id",
+  "AuthorId": "user-id"
+}
+
+Response:
+{
+    "id": 0,
+    "title": "New Blog Post",
+    "content": "This is a new blog post.",
+    "authorId": "user-id",
+    "author": "user-id",
+    "createdAt": "2025-02-07T01:19:56.1853325Z",
+    "publishedDate": null,
+    "isPublished": false
+}
