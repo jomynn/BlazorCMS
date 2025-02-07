@@ -1,94 +1,105 @@
-﻿using BlazorCMS.Data.Models;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Threading.Tasks;
+using BlazorCMS.Data;
+using BlazorCMS.Data.Models;
 
-namespace BlazorCMS.Data
+namespace BlazorCMS.Infrastructure
 {
-    public static class DatabaseInitializer
+    public class DatabaseInitializer
     {
-        /// <summary>
-        /// Ensures the database is created and migrations are applied.
-        /// </summary>
-        public static async Task InitializeAsync(IServiceProvider serviceProvider)
-        {
-            using var scope = serviceProvider.CreateScope();
-            var services = scope.ServiceProvider;
-            var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-            var logger = loggerFactory.CreateLogger("DatabaseInitializer");
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<DatabaseInitializer> _logger;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
+        public DatabaseInitializer(
+            ApplicationDbContext context,
+            ILogger<DatabaseInitializer> logger,
+            UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole> roleManager)
+        {
+            _context = context;
+            _logger = logger;
+            _userManager = userManager;
+            _roleManager = roleManager;
+        }
+
+        /// <summary>
+        /// Ensures the database is created, applies migrations, and seeds roles/users.
+        /// </summary>
+        public async Task InitializeAsync()
+        {
             try
             {
-                var dbContext = services.GetRequiredService<ApplicationDbContext>();
+                _logger.LogInformation("🔹 Checking if the database exists...");
+                await _context.Database.EnsureCreatedAsync();
 
-                // 🔹 Apply Migrations Before Creating Roles
-                logger.LogInformation("🔹 Applying pending migrations...");
-                await dbContext.Database.MigrateAsync();
-                logger.LogInformation("✅ Database and migrations applied successfully.");
+                _logger.LogInformation("🔹 Applying pending migrations...");
+                await _context.Database.MigrateAsync();
 
-                // 🔹 Seed Roles & Admin AFTER Migrations
-                await SeedRolesAndAdminAsync(services, logger);
+                _logger.LogInformation("✅ Database is ready.");
+
+                // Seed default roles
+                await SeedRolesAsync();
+
+                // Seed admin user
+                await SeedAdminUserAsync();
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "❌ An error occurred while initializing the database.");
+                _logger.LogError(ex, "❌ Error initializing the database.");
+                throw;
             }
         }
 
         /// <summary>
-        /// Seeds default roles and an admin user if not exists.
+        /// Ensures predefined roles exist in the system.
         /// </summary>
-        private static async Task SeedRolesAndAdminAsync(IServiceProvider services, ILogger logger)
+        private async Task SeedRolesAsync()
         {
-            var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-            var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+            string[] roles = { "Admin", "Editor", "User" };
 
-            // 🔹 Ensure 'AspNetRoles' Table Exists Before Calling RoleManager
-            var dbContext = services.GetRequiredService<ApplicationDbContext>();
-            if (!await dbContext.Database.CanConnectAsync())
+            foreach (var role in roles)
             {
-                logger.LogError("❌ Database connection failed. Skipping role seeding.");
-                return;
-            }
-
-            // 🔹 Ensure "Admin" Role Exists
-            if (!await roleManager.RoleExistsAsync("Admin"))
-            {
-                await roleManager.CreateAsync(new IdentityRole("Admin"));
-                logger.LogInformation("✅ Created 'Admin' role.");
-            }
-
-            // 🔹 Ensure "User" Role Exists
-            if (!await roleManager.RoleExistsAsync("User"))
-            {
-                await roleManager.CreateAsync(new IdentityRole("User"));
-                logger.LogInformation("✅ Created 'User' role.");
-            }
-
-            // 🔹 Check if Admin User Exists
-            var adminEmail = "admin@blazorcms.com";
-            var adminUser = await userManager.FindByEmailAsync(adminEmail);
-
-            if (adminUser == null)
-            {
-                var newAdmin = new ApplicationUser
+                if (!await _roleManager.RoleExistsAsync(role))
                 {
-                    UserName = "admin",
+                    await _roleManager.CreateAsync(new IdentityRole(role));
+                    _logger.LogInformation($"✅ Created role: {role}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Seeds a default admin user if no admin exists.
+        /// </summary>
+        private async Task SeedAdminUserAsync()
+        {
+            string adminEmail = "admin@blazorcms.com";
+            string adminPassword = "Admin@123"; // Change this in production
+
+            if (await _userManager.FindByEmailAsync(adminEmail) == null)
+            {
+                var adminUser = new ApplicationUser
+                {
+                    UserName = adminEmail,
                     Email = adminEmail,
-                    FullName = "Admin User"
+                    FullName = "Administrator",
+                    EmailConfirmed = true
                 };
 
-                var result = await userManager.CreateAsync(newAdmin, "Admin@123");
-
+                var result = await _userManager.CreateAsync(adminUser, adminPassword);
                 if (result.Succeeded)
                 {
-                    await userManager.AddToRoleAsync(newAdmin, "Admin");
-                    logger.LogInformation("✅ Created admin user with email: {Email}", adminEmail);
+                    await _userManager.AddToRoleAsync(adminUser, "Admin");
+                    _logger.LogInformation("✅ Default Admin user created.");
                 }
                 else
                 {
-                    logger.LogError("❌ Failed to create admin user. Errors: {Errors}", result.Errors);
+                    _logger.LogError("❌ Failed to create Admin user: {Errors}", string.Join(", ", result.Errors));
                 }
             }
         }
