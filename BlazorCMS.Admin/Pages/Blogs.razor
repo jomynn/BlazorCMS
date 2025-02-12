@@ -1,0 +1,58 @@
+﻿@page "/blogs"
+@using BlazorCMS.Admin.Services
+@using BlazorCMS.Shared.DTOs
+@inject AdminBlogService AdminBlogService
+@inject NavigationManager Navigation
+
+<h3>Blog Management</h3>
+
+<button @onclick="CreateBlog">+ Add New Blog</button>
+
+@if (AdminBlogs == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table>
+        <tr>
+            <th>Title</th>
+            <th>Actions</th>
+        </tr>
+        @foreach (var blog in AdminBlogs)
+        {
+            <tr>
+                <td>@blog.Title</td>
+                <td>
+                    <button @onclick="() => EditBlog(blog.Id)">Edit</button>
+                    <button @onclick="() => DeleteBlog(blog.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </table>
+}
+
+@code {
+    private List<BlogPostDTO> AdminBlogs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AdminBlogs = await AdminBlogService.GetAllBlogs();
+    }
+
+    private void CreateBlog()
+    {
+        Navigation.NavigateTo("/blogs/edit");
+    }
+
+    private void EditBlog(int id)
+    {
+        Navigation.NavigateTo($"/blogs/edit/{id}");
+    }
+
+    private async Task DeleteBlog(int id)
+    {
+        await AdminBlogService.DeleteBlog(id);
+        AdminBlogs = await AdminBlogService.GetAllBlogs(); // Refresh list
+    }
+}

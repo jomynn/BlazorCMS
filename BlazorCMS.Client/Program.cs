@@ -1,11 +1,8 @@
+using BlazorCMS.Client;
+using BlazorCMS.Client.Services;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using BlazorCMS.Client.Services;
 using MudBlazor.Services;
-using System;
-using System.Net.Http;
-using System.Threading.Tasks;
-using BlazorCMS.Client;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 

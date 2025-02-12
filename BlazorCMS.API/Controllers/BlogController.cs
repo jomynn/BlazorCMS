@@ -23,40 +23,6 @@ namespace BlazorCMS.API.Controllers
         [HttpGet]
         public async Task<IEnumerable<BlogPost>> GetAllBlogs_0() => await _repository.GetAllAsync();
 
-        //// Get all blogs
-        //[HttpGet]
-        //public async Task<ActionResult<IEnumerable<BlogPostDTO>>> GetAllBlogs()
-        //{
-        //    var blogs = await _repository.GetAllAsync();
-
-        //    if (blogs == null || blogs.Count == 0)
-        //    {
-        //        _logger.LogInfo("No blogs found.");
-        //        return NotFound(new { message = "No blog posts available." });
-        //    }
-
-        //    // Convert BlogPost to BlogPostDTO
-        //    var blogDtos = blogs.ConvertAll(blog => new BlogPostDTO
-        //    {
-        //        Id = blog.Id,
-        //        Title = blog.Title,
-        //        Content = blog.Content,
-        //        Author = blog.Author,
-        //        PublishedDate = blog.PublishedDate,
-        //        IsPublished = blog.IsPublished
-        //    });
-
-        //    return Ok(blogDtos);
-        //}
-
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetBlog(int id)
-        {
-            var blog = await _repository.GetByIdAsync(id);
-            if (blog == null) return NotFound();
-            return Ok(blog);
-        }
-
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetBlogById(int id)
@@ -67,22 +33,11 @@ namespace BlazorCMS.API.Controllers
                 _logger.LogWarning($"Blog post with ID {id} not found.");
                 return NotFound(new { message = "Blog post not found" });
             }
-
-            var blogDto = new BlogPostDTO
-            {
-                Id = blog.Id,
-                Title = blog.Title,
-                Content = blog.Content,
-                Author = blog.Author,
-                PublishedDate = blog.PublishedDate,
-                IsPublished = blog.IsPublished
-            };
-
-            return Ok(blogDto);
+            return Ok(blog);
         }
 
 
-        [HttpPost]
+        [HttpPost]// ✅ Create a new blog
         public async Task<IActionResult> CreateBlog([FromBody] BlogPostDTO blogDto)
         {
             if (blogDto == null)
@@ -107,6 +62,30 @@ namespace BlazorCMS.API.Controllers
 
             await _repository.AddAsync(blogPost);
             return CreatedAtAction(nameof(GetBlogById), new { id = blogPost.Id }, blogDto);
+        }
+
+        [HttpPut("{id}")] // ✅ Update a blog
+        public async Task<IActionResult> UpdateBlog(int id, [FromBody] BlogPost blogDto)
+        {
+            var blog = await _repository.GetByIdAsync(id);
+            if (blog == null) return NotFound();
+
+            blog.Title = blogDto.Title;
+            blog.Content = blogDto.Content;
+            blog.IsPublished = blogDto.IsPublished;
+
+            await _repository.UpdateAsync(blog);
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")] // ✅ Delete a blog
+        public async Task<IActionResult> DeleteBlog(int id)
+        {
+            var blog = await _repository.GetByIdAsync(id);
+            if (blog == null) return NotFound();
+
+            await _repository.DeleteAsync(id);
+            return NoContent();
         }
     }
 }

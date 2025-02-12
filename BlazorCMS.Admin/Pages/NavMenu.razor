@@ -1,0 +1,21 @@
+﻿<AuthorizeView>
+    <Authorized>
+        <li><NavLink href="/dashboard">Dashboard</NavLink></li>
+        <li><NavLink href="/blogs">Manage Blogs</NavLink></li>
+        <button @onclick="Logout">Logout</button>
+    </Authorized>
+    <NotAuthorized>
+        <li><NavLink href="/login">Login</NavLink></li>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; }
+    [Inject] private AuthenticationStateProvider AuthProvider { get; set; }
+
+    private async Task Logout()
+    {
+        await ((CustomAuthStateProvider)AuthProvider).Logout();
+        Navigation.NavigateTo("/login");
+    }
+}

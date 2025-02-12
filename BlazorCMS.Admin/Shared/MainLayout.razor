@@ -1,17 +1,16 @@
-﻿@inherits LayoutComponentBase
+﻿@inject CustomAuthStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inherits LayoutComponentBase
 
-<MudLayout>
-    <MudAppBar Color="Primary">
-        <Navbar />
-    </MudAppBar>
+<UILogger />
 
-    <MudDrawer Open="true" Color="Primary">
-        <Sidebar />
-    </MudDrawer>
+@Body
+<button @onclick="Logout">Logout</button>
 
-    <MudMainContent>
-        <MudContainer>
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+@code {
+    private async Task Logout()
+    {
+        await AuthStateProvider.Logout(); // ✅ Now calling the correct method
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

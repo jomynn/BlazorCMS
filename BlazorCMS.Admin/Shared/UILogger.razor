@@ -1,0 +1,30 @@
+﻿@inject UILoggerService Logger
+
+<div style="position: fixed; bottom: 10px; right: 10px; width: 400px; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px;">
+    <h5>📢 Logs</h5>
+    @if (Logger.GetLogs().Count == 0)
+    {
+        <p>No logs yet...</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var log in Logger.GetLogs())
+            {
+                <li>@log</li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Logger.OnLogUpdated += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Logger.OnLogUpdated -= StateHasChanged;
+    }
+}

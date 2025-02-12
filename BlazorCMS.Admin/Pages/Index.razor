@@ -1,9 +1,30 @@
 ﻿@page "/"
+@inject AdminBlogService BlogService
+@inject ILogger<Index> Logger
 
-<PageTitle>Index</PageTitle>
+<h3>Blog Management</h3>
 
-<h1>Hello, world!</h1>
+@if (blogs == null)
+{
+    <p>Loading blogs...</p>
+}
+else
+{
+    <ul>
+        @foreach (var blog in blogs)
+        {
+            <li>@blog.Title</li>
+        }
+    </ul>
+}
 
-Welcome to your new app.
+@code {
+    private List<BlogPostDTO> blogs;
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("📄 Index page loaded. Fetching blogs...");
+        blogs = await BlogService.GetAllBlogsAsync();
+        Logger.LogInformation("✅ Loaded {Count} blogs.", blogs?.Count ?? 0);
+    }
+}

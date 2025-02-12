@@ -3,14 +3,36 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using BlazorCMS.Shared.Models;
 using BlazorCMS.Data.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace BlazorCMS.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options) { }
+        private readonly IConfiguration _configuration;
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration configuration)
+            : base(options) { _configuration = configuration; }
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            string dbProvider = _configuration["DatabaseProvider"];
+            string connectionString = _configuration.GetConnectionString(dbProvider);
 
+            switch (dbProvider)
+            {
+                case "PostgreSQL":
+                    optionsBuilder.UseNpgsql(connectionString);
+                    break;
+                case "MySQL":
+                    optionsBuilder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+                    break;
+                case "MSSQL":
+                    optionsBuilder.UseSqlServer(connectionString);
+                    break;
+                default:
+                    optionsBuilder.UseSqlite(connectionString);
+                    break;
+            }
+        }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

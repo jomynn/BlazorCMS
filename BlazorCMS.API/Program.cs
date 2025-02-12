@@ -10,25 +10,34 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+var configuration = builder.Configuration;
+var environment = builder.Environment;
 
-// 🔹 Setup Logging
-var loggerFactory = LoggerFactory.Create(logging =>
-{
-    logging.AddConsole();
-    logging.AddDebug();
-});
-var logger = loggerFactory.CreateLogger("Program");
+// 🔹 Setup Logging (Using Built-in Logging)
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
 
 try
 {
-    var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret is missing!");
-    var sqliteConnection = builder.Configuration.GetConnectionString("SQLite") ?? throw new InvalidOperationException("SQLite connection string is missing!");
+    // 🔹 Validate Configuration
+    var jwtConfig = configuration.GetSection("Jwt");
+    if (string.IsNullOrWhiteSpace(jwtConfig["Secret"]))
+        throw new InvalidOperationException("❌ JWT Secret is missing!");
+
+    var sqliteConnection = configuration.GetConnectionString("SQLite")
+        ?? throw new InvalidOperationException("❌ SQLite connection string is missing!");
 
     logger.LogInformation("✅ Configuration settings validated.");
 
     // 🔹 Configure Database
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlite(sqliteConnection));
+
+    // 🔹 Register DatabaseInitializer (Fixes DI Issue)
+    builder.Services.AddScoped<DatabaseInitializer>();
 
     // 🔹 Configure Identity
     builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
@@ -52,9 +61,9 @@ try
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                ValidAudience = builder.Configuration["Jwt:Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+                ValidIssuer = jwtConfig["Issuer"],
+                ValidAudience = jwtConfig["Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig["Secret"]))
             };
         });
 
@@ -72,40 +81,40 @@ try
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
 
-    // 🔹 Swagger Configuration
-    builder.Services.AddSwaggerGen(c =>
+    // 🔹 Swagger Configuration (Enable only in Development)
+    if (environment.IsDevelopment())
     {
-        c.SwaggerDoc("v1", new OpenApiInfo { Title = "BlazorCMS API", Version = "v1" });
-
-        // 🔹 Add JWT Authentication to Swagger
-        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        builder.Services.AddSwaggerGen(c =>
         {
-            Name = "Authorization",
-            Type = SecuritySchemeType.Http,
-            Scheme = "Bearer",
-            BearerFormat = "JWT",
-            In = ParameterLocation.Header,
-            Description = "Enter 'Bearer [token]' to authenticate."
-        });
+            c.SwaggerDoc("v1", new OpenApiInfo { Title = "BlazorCMS API", Version = "v1" });
 
-        c.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
+            // 🔹 Add JWT Authentication to Swagger
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                new string[] {}
-            }
-        });
-    });
+                Name = "Authorization",
+                Type = SecuritySchemeType.Http,
+                Scheme = "Bearer",
+                BearerFormat = "JWT",
+                In = ParameterLocation.Header,
+                Description = "Enter 'Bearer [token]' to authenticate."
+            });
 
-    // 🔹 Dependency Injection
-    builder.Services.AddInfrastructure();
+            c.AddSecurityRequirement(new OpenApiSecurityRequirement
+            {
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "Bearer"
+                        }
+                    },
+                    new string[] {}
+                }
+            });
+        });
+    }
 
     var app = builder.Build();
 
@@ -120,7 +129,6 @@ try
         }
         catch (Exception ex)
         {
-         
             logger.LogError(ex, "❌ Error during database initialization.");
         }
     }
@@ -129,12 +137,15 @@ try
     app.MapGet("/", () => Results.Redirect("/swagger"));
 
     // 🔹 Middleware Configuration
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
+    if (environment.IsDevelopment())
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "BlazorCMS API v1");
-        c.RoutePrefix = "swagger"; // API Docs at /swagger
-    });
+        app.UseSwagger();
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "BlazorCMS API v1");
+            c.RoutePrefix = "swagger"; // API Docs at /swagger
+        });
+    }
 
     app.UseHttpsRedirection();
     app.UseAuthentication();
@@ -142,7 +153,7 @@ try
     app.MapControllers();
 
     // 🔹 Log API Start
-    logger.LogInformation("🚀 BlazorCMS.API is running on {Url}", builder.Configuration["ASPNETCORE_URLS"]);
+    logger.LogInformation("🚀 BlazorCMS.API is running at: {Url}", configuration["ASPNETCORE_URLS"]);
 
     app.Run();
 }
