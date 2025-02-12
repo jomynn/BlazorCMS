@@ -2,6 +2,8 @@
 using BlazorCMS.Data;
 using BlazorCMS.Data.Models;
 using BlazorCMS.Infrastructure;
+using BlazorCMS.Infrastructure.Authentication;
+using BlazorCMS.Infrastructure.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 var environment = builder.Environment;
 
-// 🔹 Setup Logging (Using Built-in Logging)
+// ✅ Setup Logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
@@ -22,34 +24,32 @@ var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<
 
 try
 {
-    // 🔹 Validate Configuration
-    var jwtConfig = configuration.GetSection("Jwt");
-    if (string.IsNullOrWhiteSpace(jwtConfig["Secret"]))
-        throw new InvalidOperationException("❌ JWT Secret is missing!");
+    // ✅ Validate Configuration
+    var jwtSecret = configuration["Jwt:Secret"] ?? throw new InvalidOperationException("❌ JWT Secret is missing!");
+    var jwtIssuer = configuration["Jwt:Issuer"] ?? "https://localhost";
+    var jwtAudience = configuration["Jwt:Audience"] ?? "https://localhost";
 
     var sqliteConnection = configuration.GetConnectionString("SQLite")
         ?? throw new InvalidOperationException("❌ SQLite connection string is missing!");
 
     logger.LogInformation("✅ Configuration settings validated.");
 
-    // 🔹 Configure Database
+    // ✅ Configure Database
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlite(sqliteConnection));
 
-    // 🔹 Register DatabaseInitializer (Fixes DI Issue)
     builder.Services.AddScoped<DatabaseInitializer>();
 
-    // 🔹 Configure Identity
+    // ✅ Configure Identity
     builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders();
 
-    // 🔹 Register Identity Services
     builder.Services.AddScoped<UserManager<ApplicationUser>>();
     builder.Services.AddScoped<SignInManager<ApplicationUser>>();
     builder.Services.AddScoped<RoleManager<IdentityRole>>();
 
-    // 🔹 Configure JWT Authentication
+    // ✅ Configure JWT Authentication
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
@@ -61,34 +61,33 @@ try
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = jwtConfig["Issuer"],
-                ValidAudience = jwtConfig["Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig["Secret"]))
+                ValidIssuer = jwtIssuer,
+                ValidAudience = jwtAudience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
             };
         });
 
-    // 🔹 Register Application Services
+    // ✅ Register Services & Repositories
+    builder.Services.AddScoped<JwtTokenService>(); // 🔹 Fix missing service
+    // ✅ Register Application Services
+    builder.Services.AddSingleton<LoggingService>(); // 🔹 Fix Missing Service Error
     builder.Services.AddScoped<AuthService>();
     builder.Services.AddScoped<BlogService>();
     builder.Services.AddScoped<PageService>();
-
-    // 🔹 Register Repositories
     builder.Services.AddScoped<BlazorCMS.Data.Repositories.BlogRepository>();
     builder.Services.AddScoped<BlazorCMS.Data.Repositories.PageRepository>();
 
-    // 🔹 Authorization & Controllers
     builder.Services.AddAuthorization();
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
 
-    // 🔹 Swagger Configuration (Enable only in Development)
+    // ✅ Configure Swagger (Dev Only)
     if (environment.IsDevelopment())
     {
         builder.Services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new OpenApiInfo { Title = "BlazorCMS API", Version = "v1" });
 
-            // 🔹 Add JWT Authentication to Swagger
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Name = "Authorization",
@@ -118,12 +117,15 @@ try
 
     var app = builder.Build();
 
-    // 🔹 Call DatabaseInitializer
+    // ✅ Database Initialization
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
         try
         {
+            var dbContext = services.GetRequiredService<ApplicationDbContext>();
+            dbContext.Database.Migrate();
+
             var dbInitializer = services.GetRequiredService<DatabaseInitializer>();
             await dbInitializer.InitializeAsync();
         }
@@ -133,17 +135,17 @@ try
         }
     }
 
-    // 🔹 Add a Root Endpoint (Redirect to Swagger)
+    // ✅ Root Endpoint Redirects to Swagger
     app.MapGet("/", () => Results.Redirect("/swagger"));
 
-    // 🔹 Middleware Configuration
+    // ✅ Middleware Configuration
     if (environment.IsDevelopment())
     {
         app.UseSwagger();
         app.UseSwaggerUI(c =>
         {
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "BlazorCMS API v1");
-            c.RoutePrefix = "swagger"; // API Docs at /swagger
+            c.RoutePrefix = "swagger";
         });
     }
 
@@ -152,8 +154,7 @@ try
     app.UseAuthorization();
     app.MapControllers();
 
-    // 🔹 Log API Start
-    logger.LogInformation("🚀 BlazorCMS.API is running at: {Url}", configuration["ASPNETCORE_URLS"]);
+    logger.LogInformation("🚀 BlazorCMS.API is running at: {Urls}", configuration["ASPNETCORE_URLS"]);
 
     app.Run();
 }

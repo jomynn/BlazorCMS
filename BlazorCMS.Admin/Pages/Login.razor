@@ -1,43 +1,50 @@
 ﻿@page "/login"
-@using BlazorCMS.Admin.Services
-@using BlazorCMS.Shared.DTOs
-@inject AdminAuthService AdminAuthService
+@inject HttpClient Http
+@inject CustomAuthStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <h3>Admin Login</h3>
 
-@if (!string.IsNullOrEmpty(ErrorMessage))
+@if (!string.IsNullOrEmpty(errorMessage))
 {
-    <p style="color:red">@ErrorMessage</p>
+    <div class="alert alert-danger">@errorMessage</div>
 }
 
-
-<div>
+<div class="login-container">
     <label>Email:</label>
-    <input @bind="LoginModel.Email" placeholder="Email" />
-</div>
+    <input @bind="email" class="form-control" />
 
-<div>
     <label>Password:</label>
-    <input @bind="LoginModel.Password" type="password" placeholder="Password" />
-</div>
+    <input @bind="password" type="password" class="form-control" />
 
-<button @onclick="AdminLogin">Login</button>
+    <button class="btn btn-primary mt-2" @onclick="AdminLogin">Admin Login</button>
+</div>
 
 @code {
-    private LoginDTO loginDto = new();
-    private string ErrorMessage = "";
+    private string email;
+    private string password;
+    private string errorMessage;
 
     private async Task AdminLogin()
     {
-        var result = await AdminAuthService.LoginAsync(loginDto);
-        if (result)
+        var loginModel = new { Email = email, Password = password };
+        var response = await Http.PostAsJsonAsync("https://localhost:7250/api/auth/login", loginModel);
+
+        if (response.IsSuccessStatusCode)
         {
-            Navigation.NavigateTo("/dashboard");
+            var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+            await AuthProvider.SetAuthToken(result.Token);
+            Navigation.NavigateTo("/", true);
         }
         else
         {
-            ErrorMessage = "Invalid Credentials!";
+            errorMessage = "Invalid login credentials.";
         }
+    }
+
+    private class LoginResponse
+    {
+        public string Token { get; set; }
     }
 }

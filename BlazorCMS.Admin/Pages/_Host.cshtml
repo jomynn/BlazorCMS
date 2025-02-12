@@ -1,6 +1,8 @@
 ﻿@page "/"
 @namespace BlazorCMS.Admin.Pages
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
 
 <!DOCTYPE html>
 <html lang="en">
@@ -19,7 +21,6 @@
 <body>
     <app>
         <component type="typeof(App)" render-mode="ServerPrerendered" />
-        <div>Loading...</div>
     </app>
 
     <script src="_framework/blazor.server.js"></script>

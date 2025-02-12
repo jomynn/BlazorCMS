@@ -1,16 +1,7 @@
-﻿@inject CustomAuthStateProvider AuthStateProvider
-@inject NavigationManager Navigation
-@inherits LayoutComponentBase
+﻿@inherits LayoutComponentBase
 
-<UILogger />
+<PageTitle>BlazorCMS Admin</PageTitle>
 
-@Body
-<button @onclick="Logout">Logout</button>
-
-@code {
-    private async Task Logout()
-    {
-        await AuthStateProvider.Logout(); // ✅ Now calling the correct method
-        Navigation.NavigateTo("/login", forceLoad: true);
-    }
-}
+<div class="container">
+    @Body
+</div>
