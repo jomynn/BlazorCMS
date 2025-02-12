@@ -1,31 +1,96 @@
 ﻿@page "/"
-@using BlazorCMS.Shared.DTOs
-@inject AdminBlogService BlogService
-@inject ILogger<Index> Logger
+@inject HttpClient Http
+@inject NavigationManager Navigation
 
-<h3>Blog Management</h3>
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+            <div class="position-sticky pt-3">
+                <h5 class="text-center fw-bold mb-3">Welcome, Admin</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">🏠 Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">📂 Manage Categories</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">📝 Manage Blog Posts</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">📬 Manage Subscribers</a>
+                    </li>
+                </ul>
+                <button class="btn btn-danger w-100 mt-3" @onclick="Logout">Logout</button>
+            </div>
+        </nav>
 
-@if (blogs == null)
-{
-    <p>Loading blogs...</p>
-}
-else
-{
-    <ul>
-        @foreach (var blog in blogs)
-        {
-            <li>@blog.Title</li>
-        }
-    </ul>
-}
+        <!-- Main Content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <h2 class="mt-4 fw-bold">Welcome, Admin</h2>
+            <p>You are logged in as an administrator.</p>
+
+            <div class="card shadow-sm p-3 mb-5 bg-body rounded">
+                <h4 class="card-title">Dashboard</h4>
+                <p class="card-text">Welcome to your advanced single-page application, now leveraging the latest in:</p>
+                @if (blogs == null)
+                {
+                    <p>Loading blog posts...</p>
+                }
+                else if (blogs.Count == 0)
+                {
+                    <p>No blog posts found.</p>
+                }
+                else
+                {
+                    <ul class="list-group mt-3">
+                        @foreach (var blog in blogs)
+                        {
+                            <li class="list-group-item">
+                                <h4>@blog.Title</h4>
+                                <p>@blog.Content</p>
+                                <p class="text-muted">@blog.Date.ToString("dd/MM/yyyy HH:mm:ss")</p>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                <button class="btn btn-primary mt-3" @onclick="CreateNewPost">➕ New Blog Post</button>
+            </div>
+        </main>
+    </div>
+</div>
 
 @code {
-    private List<BlogPostDTO> blogs;
+    private List<BlogPost> blogs = new();
 
     protected override async Task OnInitializedAsync()
     {
-        Logger.LogInformation("📄 Index page loaded. Fetching blogs...");
-        blogs = await BlogService.GetAllBlogsAsync();
-        Logger.LogInformation("✅ Loaded {Count} blogs.", blogs?.Count ?? 0);
+        try
+        {
+            blogs = await Http.GetFromJsonAsync<List<BlogPost>>("/api/blog");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading blogs: {ex.Message}");
+        }
+    }
+
+    private void CreateNewPost()
+    {
+        Navigation.NavigateTo("/blog/new");
+    }
+
+    public class BlogPost
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+    }
+
+    private void Logout()
+    {
+        Navigation.NavigateTo("/logout");
     }
 }
