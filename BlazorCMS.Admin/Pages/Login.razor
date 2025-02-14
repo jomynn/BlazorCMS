@@ -1,50 +1,85 @@
 ﻿@page "/login"
-@inject HttpClient Http
-@inject CustomAuthStateProvider AuthProvider
+@using Microsoft.JSInterop
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthStateProvider
 
-<h3>Admin Login</h3>
+<h3 class="text-center mt-4">Admin Login</h3>
 
-@if (!string.IsNullOrEmpty(errorMessage))
+@if (!IsAuthenticated)
 {
-    <div class="alert alert-danger">@errorMessage</div>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-4">
+                <div class="card shadow p-4">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" @bind="Email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" @bind="Password" required>
+                        </div>
+                        <button class="btn btn-primary w-100" @onclick="AdminLogin">AdminLogin</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="text-center">
+        <p>✅ You are logged in.</p>
+        <button class="btn btn-danger" @onclick="Logout">Logout</button>
+    </div>
 }
 
-<div class="login-container">
-    <label>Email:</label>
-    <input @bind="email" class="form-control" />
-
-    <label>Password:</label>
-    <input @bind="password" type="password" class="form-control" />
-
-    <button class="btn btn-primary mt-2" @onclick="AdminLogin">Admin Login</button>
-</div>
-
 @code {
-    private string email;
-    private string password;
-    private string errorMessage;
+    private string Email = "";
+    private string Password = "";
+    private bool IsAuthenticated = false;
+    private bool _rendered = false;
 
-    private async Task AdminLogin()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var loginModel = new { Email = email, Password = password };
-        var response = await Http.PostAsJsonAsync("https://localhost:7250/api/auth/login", loginModel);
-
-        if (response.IsSuccessStatusCode)
+        if (firstRender)
         {
-            var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
-            await AuthProvider.SetAuthToken(result.Token);
-            Navigation.NavigateTo("/", true);
-        }
-        else
-        {
-            errorMessage = "Invalid login credentials.";
+            var token = await JS.InvokeAsync<string>("localStorage.getItem", "authToken");
+            IsAuthenticated = !string.IsNullOrEmpty(token);
+            _rendered = true;
+            StateHasChanged(); // Re-render component after fetching token
         }
     }
 
-    private class LoginResponse
+    private async Task AdminLogin()
     {
-        public string Token { get; set; }
+        var loginData = new { Email, Password };
+
+        var http = new HttpClient { BaseAddress = new Uri("https://localhost:7250") };
+        var response = await http.PostAsJsonAsync("/api/auth/login", loginData);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var token = await response.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("localStorage.setItem", "authToken", token);
+
+            ((CustomAuthStateProvider)AuthStateProvider).NotifyAuthenticationStateChanged();
+            IsAuthenticated = true;
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            Console.WriteLine("❌ Login failed. Check credentials.");
+        }
+    }
+
+    private async Task Logout()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
+        ((CustomAuthStateProvider)AuthStateProvider).NotifyAuthenticationStateChanged();
+        IsAuthenticated = false;
+        Navigation.NavigateTo("/login", forceLoad: true);
     }
 }

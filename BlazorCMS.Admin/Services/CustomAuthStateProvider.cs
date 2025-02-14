@@ -56,6 +56,10 @@ namespace BlazorCMS.Admin.Services
             NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
         }
 
+        public void NotifyAuthenticationStateChanged()
+        {
+            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        }
         private IEnumerable<Claim> ParseTokenClaims(string token)
         {
             var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
