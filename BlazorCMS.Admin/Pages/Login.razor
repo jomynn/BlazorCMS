@@ -3,6 +3,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthStateProvider
+@inject HttpClient Http // ✅ Inject HttpClient
 
 <h3 class="text-center mt-4">Admin Login</h3>
 
@@ -21,7 +22,11 @@
                             <label class="form-label">Password</label>
                             <input type="password" class="form-control" @bind="Password" required>
                         </div>
-                        <button class="btn btn-primary w-100" @onclick="AdminLogin">AdminLogin</button>
+                        <button class="btn btn-primary w-100" @onclick="AdminLogin">Login</button>
+                        @if (!string.IsNullOrEmpty(ErrorMessage))
+                        {
+                            <p class="text-danger mt-3">@ErrorMessage</p>
+                        }
                     </div>
                 </div>
             </div>
@@ -31,8 +36,7 @@
 else
 {
     <div class="text-center">
-        <p>✅ You are logged in.</p>
-        <button class="btn btn-danger" @onclick="Logout">Logout</button>
+        <p>✅ You are logged in. Redirecting...</p>
     </div>
 }
 
@@ -40,46 +44,59 @@ else
     private string Email = "";
     private string Password = "";
     private bool IsAuthenticated = false;
+    private string ErrorMessage = "";
     private bool _rendered = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !_rendered)
         {
             var token = await JS.InvokeAsync<string>("localStorage.getItem", "authToken");
             IsAuthenticated = !string.IsNullOrEmpty(token);
-            _rendered = true;
-            StateHasChanged(); // Re-render component after fetching token
+            _rendered = true; // ✅ Prevent unnecessary updates
+            if (IsAuthenticated)
+            {
+                Navigation.NavigateTo("/", forceLoad: true); // ✅ Redirect if already logged in
+            }
+            else
+            {
+                StateHasChanged(); // ✅ Fix UI stuck issue
+            }
         }
     }
 
     private async Task AdminLogin()
     {
+        ErrorMessage = "";
         var loginData = new { Email, Password };
 
-        var http = new HttpClient { BaseAddress = new Uri("https://localhost:7250") };
-        var response = await http.PostAsJsonAsync("/api/auth/login", loginData);
-
-        if (response.IsSuccessStatusCode)
+        try
         {
-            var token = await response.Content.ReadAsStringAsync();
-            await JS.InvokeVoidAsync("localStorage.setItem", "authToken", token);
+            var response = await Http.PostAsJsonAsync("/api/auth/login", loginData);
 
-            ((CustomAuthStateProvider)AuthStateProvider).NotifyAuthenticationStateChanged();
-            IsAuthenticated = true;
-            Navigation.NavigateTo("/");
+            if (response.IsSuccessStatusCode)
+            {
+                var token = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("localStorage.setItem", "authToken", token);
+
+                ((CustomAuthStateProvider)AuthStateProvider).NotifyAuthenticationStateChanged();
+                IsAuthenticated = true;
+
+                // ✅ Ensure State Updates Before Navigation
+                StateHasChanged();
+                await Task.Delay(200);
+                Navigation.NavigateTo("/", forceLoad: true);
+            }
+            else
+            {
+                ErrorMessage = "❌ Invalid login credentials. Please try again.";
+                StateHasChanged(); // ✅ Update UI to show error message
+            }
         }
-        else
+        catch (Exception ex)
         {
-            Console.WriteLine("❌ Login failed. Check credentials.");
+            ErrorMessage = "❌ An error occurred during login.";
+            Console.WriteLine($"Login Error: {ex.Message}");
         }
-    }
-
-    private async Task Logout()
-    {
-        await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
-        ((CustomAuthStateProvider)AuthStateProvider).NotifyAuthenticationStateChanged();
-        IsAuthenticated = false;
-        Navigation.NavigateTo("/login", forceLoad: true);
     }
 }
