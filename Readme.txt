@@ -139,3 +139,66 @@ CREATE TABLE BlogPosts (
 );
 
 
+
+
+/*****************************************************************
+CREATE TABLE "AspNetRoles" (
+	"Id"	TEXT NOT NULL,
+	"Name"	TEXT,
+	"NormalizedName"	TEXT,
+	"ConcurrencyStamp"	TEXT,
+	PRIMARY KEY("Id")
+);
+CREATE TABLE "AspNetUserRoles" (
+	"UserId"	TEXT NOT NULL,
+	"RoleId"	TEXT NOT NULL,
+	FOREIGN KEY("UserId") REFERENCES "AspNetUsers"("Id") ON DELETE CASCADE,
+	FOREIGN KEY("RoleId") REFERENCES "AspNetRoles"("Id") ON DELETE CASCADE,
+	PRIMARY KEY("UserId","RoleId")
+);
+CREATE TABLE "AspNetUsers" (
+	"Id"	TEXT NOT NULL,
+	"UserName"	TEXT,
+	"NormalizedUserName"	TEXT,
+	"Email"	NUMERIC,
+	"NormalizedEmail"	TEXT,
+	"EmailConfirmed"	INTEGER NOT NULL,
+	"PasswordHash"	TEXT,
+	"SecurityStamp"	TEXT,
+	"ConcurrencyStamp"	TEXT,
+	"PhoneNumber"	TEXT,
+	"PhoneNumberConfirmed"	INTEGER NOT NULL,
+	"TwoFactorEnabled"	INTEGER NOT NULL,
+	"LockoutEnd"	TEXT,
+	"LockoutEnabled"	INTEGER NOT NULL,
+	"AccessFailedCount"	INTEGER NOT NULL,
+	"FullName"	TEXT,
+	"RegisteredOn"	TEXT,
+	PRIMARY KEY("Id")
+);
+CREATE TABLE "BlogPosts" (
+	"Id"	INTEGER,
+	"Title"	TEXT NOT NULL,
+	"Content"	TEXT NOT NULL,
+	"AuthorId"	TEXT NOT NULL,
+	"Author"	TEXT NOT NULL,
+	"CreatedAt"	TEXT NOT NULL DEFAULT (datetime('now')),
+	"PublishedDate"	TEXT DEFAULT NULL,
+	"IsPublished"	INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY("Id" AUTOINCREMENT)
+);
+CREATE TABLE "__EFMigrationsHistory" (
+	"MigrationId"	TEXT NOT NULL,
+	"ProductVersion"	TEXT NOT NULL,
+	CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY("MigrationId")
+);
+CREATE TABLE "__EFMigrationsLock" (
+	"Id"	INTEGER NOT NULL,
+	"Timestamp"	TEXT NOT NULL,
+	CONSTRAINT "PK___EFMigrationsLock" PRIMARY KEY("Id")
+);
+CREATE TABLE "sqlite_sequence" (
+	"name"	,
+	"seq"	
+);
+/********************************************************

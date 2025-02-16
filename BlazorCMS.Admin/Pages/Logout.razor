@@ -1,0 +1,38 @@
+﻿@page "/logout"
+@using Microsoft.JSInterop
+@inject NavigationManager Navigation
+@inject SignalRService SignalR
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Logging Out...</h3>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // ✅ Disconnect SignalR before logging out
+            if (SignalR != null)
+            {
+                await SignalR.DisconnectAsync();
+            }
+
+            // ✅ Remove authentication token
+            await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
+
+            // ✅ Notify Blazor that authentication state changed
+            if (AuthStateProvider is CustomAuthStateProvider customAuthProvider)
+            {
+                customAuthProvider.NotifyAuthenticationStateChanged();
+            }
+
+            // ✅ Redirect to login page
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Logout failed: {ex.Message}");
+        }
+    }
+}

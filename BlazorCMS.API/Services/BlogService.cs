@@ -1,17 +1,14 @@
-﻿using BlazorCMS.Data.Repositories;
+﻿using BlazorCMS.Data.Models;
+using BlazorCMS.Data.Repositories;
 using BlazorCMS.Shared.DTOs;
-using BlazorCMS.Data.Models;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace BlazorCMS.API.Services
 {
     public class BlogService
     {
-        private readonly BlogRepository _repository;
+        private readonly IBlogRepository _repository;
 
-        public BlogService(BlogRepository repository)
+        public BlogService(IBlogRepository repository)
         {
             _repository = repository;
         }

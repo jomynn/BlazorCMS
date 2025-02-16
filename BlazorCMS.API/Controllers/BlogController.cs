@@ -10,19 +10,26 @@ namespace BlazorCMS.API.Controllers
     [ApiController]
     public class BlogController : ControllerBase
     {
-        private readonly BlogRepository _repository;
+        private readonly IBlogRepository _repository;
         private readonly LoggingService _logger;
 
-        public BlogController(BlogRepository repository, LoggingService logger)
+        public BlogController(IBlogRepository repository, LoggingService logger)
         {
             _repository = repository;
             _logger = logger;
         }
 
-        //// Get all blogs
-        [HttpGet]
-        public async Task<IEnumerable<BlogPost>> GetAllBlogs_0() => await _repository.GetAllAsync();
+        ////// Get all blogs
+        //[HttpGet]
+        //public async Task<IEnumerable<BlogPost>> GetAllBlogs_0() => await _repository.GetAllAsync();
 
+       
+        [HttpGet]
+        public async Task<IActionResult> GetAllBlogs()
+        {
+            var blogs = await _repository.GetAllAsync();
+            return Ok(blogs);
+        }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetBlogById(int id)

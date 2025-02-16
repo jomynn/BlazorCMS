@@ -1,61 +1,40 @@
-﻿using BlazorCMS.Data.Repositories;
-using BlazorCMS.Shared.DTOs;
-using BlazorCMS.Data.Models;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using BlazorCMS.Data.Models;
+using BlazorCMS.Data.Repositories;
 
 namespace BlazorCMS.API.Services
 {
     public class PageService
     {
-        private readonly PageRepository _repository;
+        private readonly IRepository<Page> _pageRepository;
 
-        public PageService(PageRepository repository)
+        public PageService(IRepository<Page> pageRepository)
         {
-            _repository = repository;
+            _pageRepository = pageRepository;
         }
 
-        public async Task<IEnumerable<PageDTO>> GetAllPagesAsync()
+        public async Task<IEnumerable<Page>> GetAllPagesAsync()
         {
-            var pages = await _repository.GetAllAsync();
-            return pages.Select(page => new PageDTO
-            {
-                Id = page.Id,
-                Title = page.Title,
-                Slug = page.Slug,
-                Content = page.Content,
-                IsPublished = page.IsPublished
-            }).ToList();
+            return await _pageRepository.GetAllAsync();
         }
 
-        public async Task<PageDTO> GetPageByIdAsync(int id)
+        public async Task<Page?> GetPageByIdAsync(int id)
         {
-            var page = await _repository.GetByIdAsync(id);
-            if (page == null) return null;
-
-            return new PageDTO
-            {
-                Id = page.Id,
-                Title = page.Title,
-                Slug = page.Slug,
-                Content = page.Content,
-                IsPublished = page.IsPublished
-            };
+            return await _pageRepository.GetByIdAsync(id);
         }
 
-        public async Task<bool> CreatePageAsync(PageDTO pageDto)
+        public async Task AddPageAsync(Page page)
         {
-            var page = new Page
-            {
-                Title = pageDto.Title,
-                Slug = pageDto.Slug,
-                Content = pageDto.Content,
-                IsPublished = pageDto.IsPublished
-            };
+            await _pageRepository.AddAsync(page);
+        }
 
-            await _repository.AddAsync(page);
-            return true;
+        public async Task UpdatePageAsync(Page page)
+        {
+            await _pageRepository.UpdateAsync(page);
+        }
+
+        public async Task DeletePageAsync(int id)
+        {
+            await _pageRepository.DeleteAsync(id);
         }
     }
 }

@@ -29,7 +29,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Start", "Start", "{F219DD3F
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Resource", "Resource", "{11DA93C4-AFA0-4A28-BA32-46229A7E9D6F}"
 	ProjectSection(SolutionItems) = preProject
+		BlazorCMS.API\blazorcms.db.sql = BlazorCMS.API\blazorcms.db.sql
 		Readme.txt = Readme.txt
+		sql.txt = sql.txt
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{8E796852-3CFE-47B2-8914-128E50D9128F}"

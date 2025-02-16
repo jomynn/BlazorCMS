@@ -32,6 +32,7 @@ builder.Services.AddSingleton<UILoggerService>();
 builder.Services.AddScoped<CustomAuthStateProvider>(); // ✅ Register CustomAuthStateProvider
 builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthStateProvider>());
 
+builder.Services.AddScoped<SignalRService>(); // ✅ Ensure SignalRService is registered
 
 builder.Services.AddAuthorizationCore();
 //builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();

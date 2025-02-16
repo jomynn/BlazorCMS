@@ -1,0 +1,67 @@
+BEGIN TRANSACTION;
+CREATE TABLE IF NOT EXISTS "__EFMigrationsLock" (
+	"Id"	INTEGER NOT NULL,
+	"Timestamp"	TEXT NOT NULL,
+	CONSTRAINT "PK___EFMigrationsLock" PRIMARY KEY("Id")
+);
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+	"MigrationId"	TEXT NOT NULL,
+	"ProductVersion"	TEXT NOT NULL,
+	CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY("MigrationId")
+);
+CREATE TABLE IF NOT EXISTS "AspNetRoles" (
+	"Id"	TEXT NOT NULL,
+	"Name"	TEXT,
+	"NormalizedName"	TEXT,
+	"ConcurrencyStamp"	TEXT,
+	PRIMARY KEY("Id")
+);
+CREATE TABLE IF NOT EXISTS "AspNetUserRoles" (
+	"UserId"	TEXT NOT NULL,
+	"RoleId"	TEXT NOT NULL,
+	FOREIGN KEY("UserId") REFERENCES "AspNetUsers"("Id") ON DELETE CASCADE,
+	FOREIGN KEY("RoleId") REFERENCES "AspNetRoles"("Id") ON DELETE CASCADE,
+	PRIMARY KEY("UserId","RoleId")
+);
+CREATE TABLE IF NOT EXISTS "AspNetUsers" (
+	"Id"	TEXT NOT NULL,
+	"UserName"	TEXT,
+	"NormalizedUserName"	TEXT,
+	"Email"	NUMERIC,
+	"NormalizedEmail"	TEXT,
+	"EmailConfirmed"	INTEGER NOT NULL,
+	"PasswordHash"	TEXT,
+	"SecurityStamp"	TEXT,
+	"ConcurrencyStamp"	TEXT,
+	"PhoneNumber"	TEXT,
+	"PhoneNumberConfirmed"	INTEGER NOT NULL,
+	"TwoFactorEnabled"	INTEGER NOT NULL,
+	"LockoutEnd"	TEXT,
+	"LockoutEnabled"	INTEGER NOT NULL,
+	"AccessFailedCount"	INTEGER NOT NULL,
+	"FullName"	TEXT,
+	"RegisteredOn"	TEXT,
+	PRIMARY KEY("Id")
+);
+CREATE TABLE IF NOT EXISTS "BlogPosts" (
+	"Id"	INTEGER,
+	"Title"	TEXT NOT NULL,
+	"Content"	TEXT NOT NULL,
+	"AuthorId"	TEXT NOT NULL,
+	"Author"	TEXT NOT NULL,
+	"CreatedAt"	TEXT NOT NULL DEFAULT (datetime('now')),
+	"PublishedDate"	TEXT DEFAULT NULL,
+	"IsPublished"	INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY("Id" AUTOINCREMENT)
+);
+INSERT INTO "__EFMigrationsLock" ("Id","Timestamp") VALUES (1,'2025-02-14 13:45:15.0947689+00:00');
+INSERT INTO "AspNetRoles" ("Id","Name","NormalizedName","ConcurrencyStamp") VALUES ('44f0ff12-8e79-4358-8cfe-ecc84ac3c13b','Admin','ADMIN',NULL),
+ ('a804f391-10d1-4a78-8645-1b83ed867b7c','User','USER',NULL),
+ ('ed545a73-e5c4-4d03-b071-85a69e9c479b','Editor','EDITOR',NULL);
+INSERT INTO "AspNetUserRoles" ("UserId","RoleId") VALUES ('4e9a180b-b3cd-4886-b109-974346663d66','44f0ff12-8e79-4358-8cfe-ecc84ac3c13b'),
+ ('e323649d-d98a-4fbd-81c3-5e82557860ee','a804f391-10d1-4a78-8645-1b83ed867b7c');
+INSERT INTO "AspNetUsers" ("Id","UserName","NormalizedUserName","Email","NormalizedEmail","EmailConfirmed","PasswordHash","SecurityStamp","ConcurrencyStamp","PhoneNumber","PhoneNumberConfirmed","TwoFactorEnabled","LockoutEnd","LockoutEnabled","AccessFailedCount","FullName","RegisteredOn") VALUES ('4e9a180b-b3cd-4886-b109-974346663d66','admin','ADMIN','admin@blazorcms.com','ADMIN@BLAZORCMS.COM',0,'AQAAAAIAAYagAAAAEEP7wXf/+AV7ICZpWZfJ3qjfwP4D8K+xV+DPLO1p5OAMsBEuZInQ4zTYJhPAPDPVQQ==','4ZHFARRN5SZ6F6GQ5DAJE2QA526J3I6Q','652022db-0814-4ff7-a96b-58f065fed2de',NULL,0,0,NULL,1,0,'Admin User','2025-02-01 16:34:02.8084435'),
+ ('e323649d-d98a-4fbd-81c3-5e82557860ee','johndoe@example.com','JOHNDOE@EXAMPLE.COM','johndoe@example.com','JOHNDOE@EXAMPLE.COM',0,'AQAAAAIAAYagAAAAEM4WWTuy9o+v3hIFBBwTE2RT5mqGe98BJEm2vwmKbu2+j5QZMhh2rkDNEhd6wA4X9w==','2NG4YZ76PNWKS6IB5I7DIIYIY553MJDX','0ae7aa15-76e1-4b2a-805c-9c1aab465f2f',NULL,0,0,NULL,1,0,'John Doe','2025-02-01 16:34:10.3258252');
+INSERT INTO "BlogPosts" ("Id","Title","Content","AuthorId","Author","CreatedAt","PublishedDate","IsPublished") VALUES (1,'New Blog Post','This is a new blog post.','user-id','user-id','2025-02-07 01:19:56.2079569','2025-02-07 01:19:56.2083249',0),
+ (2,'New Blog Post','This is a new blog post.','user-id','user-id','2025-02-07 12:54:41.2457729','2025-02-07 12:54:41.2459771',0);
+COMMIT;

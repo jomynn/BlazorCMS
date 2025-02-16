@@ -5,6 +5,10 @@
     <ProjectReference Include="..\BlazorCMS.Client\BlazorCMS.Client.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Data\" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
