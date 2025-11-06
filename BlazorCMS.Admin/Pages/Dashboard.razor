@@ -1,15 +1,560 @@
-﻿@page "/admin"
+@page "/admin"
+@page "/dashboard"
+@using BlazorCMS.Admin.Services
+@using BlazorCMS.Shared.DTOs
+@inject AdminApiService ApiService
+@inject ILogger<Dashboard> Logger
 
-<div class="container">
-    <h2 class="mt-3">Welcome, Admin</h2>
-    <p>You are logged in as an administrator.</p>
+<PageTitle>Admin Dashboard - BlazorCMS</PageTitle>
 
-    <ul class="list-group mt-3">
-        <li class="list-group-item">✔ ASP.NET Core Blazor with enhanced performance</li>
-        <li class="list-group-item">✔ Identity authentication for secure user management</li>
-        <li class="list-group-item">✔ Hosted on ASP.NET Core with advanced deployment</li>
-        <li class="list-group-item">✔ SignalR for real-time client-server communication</li>
-        <li class="list-group-item">✔ Call Web API endpoints using <code>HttpClient</code></li>
-        <li class="list-group-item">✔ Logging with diagnostics and analytics</li>
-    </ul>
+<div class="container-fluid mt-4">
+    <h2 class="mb-4">Admin Dashboard</h2>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading dashboard data...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card border-primary">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">Total Blogs</h5>
+                        <h2 class="display-4">@stats.TotalBlogs</h2>
+                        <small class="text-muted">@stats.PublishedBlogs Published / @stats.DraftBlogs Drafts</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-success">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">Total Pages</h5>
+                        <h2 class="display-4">@stats.TotalPages</h2>
+                        <small class="text-muted">@stats.PublishedPages Published</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-info">
+                    <div class="card-body">
+                        <h5 class="card-title text-info">API Status</h5>
+                        <h2 class="display-4">
+                            @if (apiConnected)
+                            {
+                                <span class="badge bg-success">Online</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Offline</span>
+                            }
+                        </h2>
+                        <small class="text-muted">Backend API</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card border-warning">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">Quick Actions</h5>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-sm btn-primary" @onclick="RefreshData">
+                                Refresh
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => showApiTester = !showApiTester">
+                                API Tester
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Recent Blog Posts</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (stats.RecentBlogs.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Author</th>
+                                            <th>Created</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var blog in stats.RecentBlogs)
+                                        {
+                                            <tr>
+                                                <td>@blog.Title</td>
+                                                <td>@blog.Author</td>
+                                                <td>@blog.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                                <td>
+                                                    @if (blog.IsPublished)
+                                                    {
+                                                        <span class="badge bg-success">Published</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Draft</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted">No blog posts found.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Manual Tester -->
+        @if (showApiTester)
+        {
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">API Manual Tester</h5>
+                            <button class="btn btn-sm btn-outline-light" @onclick="() => showApiTester = false">
+                                Close
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <ul class="nav nav-tabs mb-3" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link @(activeTab == "blogs" ? "active" : "")"
+                                       @onclick="() => activeTab = "blogs""
+                                       href="javascript:void(0)">
+                                        Blog API
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(activeTab == "pages" ? "active" : "")"
+                                       @onclick="() => activeTab = "pages""
+                                       href="javascript:void(0)">
+                                        Page API
+                                    </a>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content">
+                                <!-- Blog API Tab -->
+                                @if (activeTab == "blogs")
+                                {
+                                    <div class="tab-pane active">
+                                        <h6>Blog Operations</h6>
+
+                                        <!-- Get All Blogs -->
+                                        <div class="mb-3">
+                                            <button class="btn btn-primary btn-sm" @onclick="TestGetAllBlogs">
+                                                GET /api/blog - Get All Blogs
+                                            </button>
+                                        </div>
+
+                                        <!-- Get Blog by ID -->
+                                        <div class="mb-3">
+                                            <div class="input-group">
+                                                <span class="input-group-text">GET /api/blog/</span>
+                                                <input type="number" class="form-control" @bind="testBlogId" placeholder="ID" style="max-width: 100px;" />
+                                                <button class="btn btn-primary btn-sm" @onclick="TestGetBlogById">
+                                                    Get by ID
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Create Blog -->
+                                        <div class="mb-3">
+                                            <h6>Create New Blog (POST /api/blog)</h6>
+                                            <div class="row g-2">
+                                                <div class="col-md-6">
+                                                    <input type="text" class="form-control form-control-sm" @bind="newBlog.Title" placeholder="Title" />
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <input type="text" class="form-control form-control-sm" @bind="newBlog.Author" placeholder="Author" />
+                                                </div>
+                                                <div class="col-12">
+                                                    <textarea class="form-control form-control-sm" @bind="newBlog.Content" placeholder="Content" rows="3"></textarea>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" @bind="newBlog.IsPublished" id="publishCheck" />
+                                                        <label class="form-check-label" for="publishCheck">Published</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <button class="btn btn-success btn-sm" @onclick="TestCreateBlog">
+                                                        Create Blog
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Update Blog -->
+                                        <div class="mb-3">
+                                            <h6>Update Blog (PUT /api/blog/{id})</h6>
+                                            <div class="row g-2">
+                                                <div class="col-auto">
+                                                    <input type="number" class="form-control form-control-sm" @bind="updateBlog.Id" placeholder="Blog ID" style="max-width: 100px;" />
+                                                </div>
+                                                <div class="col">
+                                                    <input type="text" class="form-control form-control-sm" @bind="updateBlog.Title" placeholder="New Title" />
+                                                </div>
+                                                <div class="col-auto">
+                                                    <button class="btn btn-warning btn-sm" @onclick="TestUpdateBlog">
+                                                        Update
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Delete Blog -->
+                                        <div class="mb-3">
+                                            <div class="input-group">
+                                                <span class="input-group-text">DELETE /api/blog/</span>
+                                                <input type="number" class="form-control" @bind="deleteBlogId" placeholder="ID" style="max-width: 100px;" />
+                                                <button class="btn btn-danger btn-sm" @onclick="TestDeleteBlog">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+
+                                <!-- Page API Tab -->
+                                @if (activeTab == "pages")
+                                {
+                                    <div class="tab-pane active">
+                                        <h6>Page Operations</h6>
+
+                                        <!-- Get All Pages -->
+                                        <div class="mb-3">
+                                            <button class="btn btn-primary btn-sm" @onclick="TestGetAllPages">
+                                                GET /api/pages - Get All Pages
+                                            </button>
+                                        </div>
+
+                                        <!-- Get Page by ID -->
+                                        <div class="mb-3">
+                                            <div class="input-group">
+                                                <span class="input-group-text">GET /api/pages/</span>
+                                                <input type="number" class="form-control" @bind="testPageId" placeholder="ID" style="max-width: 100px;" />
+                                                <button class="btn btn-primary btn-sm" @onclick="TestGetPageById">
+                                                    Get by ID
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Create Page -->
+                                        <div class="mb-3">
+                                            <h6>Create New Page (POST /api/pages)</h6>
+                                            <div class="row g-2">
+                                                <div class="col-md-6">
+                                                    <input type="text" class="form-control form-control-sm" @bind="newPage.Title" placeholder="Title" />
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <input type="text" class="form-control form-control-sm" @bind="newPage.Slug" placeholder="Slug (URL)" />
+                                                </div>
+                                                <div class="col-12">
+                                                    <textarea class="form-control form-control-sm" @bind="newPage.Content" placeholder="Content" rows="3"></textarea>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" @bind="newPage.IsPublished" id="pagePublishCheck" />
+                                                        <label class="form-check-label" for="pagePublishCheck">Published</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <button class="btn btn-success btn-sm" @onclick="TestCreatePage">
+                                                        Create Page
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- API Response Output -->
+                            @if (!string.IsNullOrEmpty(apiResponse))
+                            {
+                                <div class="mt-3">
+                                    <h6>API Response:</h6>
+                                    <div class="alert @(apiSuccess ? "alert-success" : "alert-danger")" role="alert">
+                                        <pre class="mb-0" style="max-height: 300px; overflow-y: auto;">@apiResponse</pre>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
 </div>
+
+@code {
+    private DashboardStatsDTO stats = new();
+    private bool isLoading = true;
+    private bool apiConnected = false;
+    private bool showApiTester = false;
+    private string activeTab = "blogs";
+
+    // API Test Variables
+    private string apiResponse = "";
+    private bool apiSuccess = false;
+
+    // Blog Test Variables
+    private int testBlogId = 1;
+    private int deleteBlogId = 0;
+    private BlogPostDTO newBlog = new() { CreatedAt = DateTime.Now };
+    private BlogPostDTO updateBlog = new();
+
+    // Page Test Variables
+    private int testPageId = 1;
+    private PageDTO newPage = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+    }
+
+    private async Task RefreshData()
+    {
+        isLoading = true;
+        try
+        {
+            stats = await ApiService.GetDashboardStatsAsync();
+            apiConnected = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load dashboard data");
+            apiConnected = false;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    #region Blog API Tests
+
+    private async Task TestGetAllBlogs()
+    {
+        try
+        {
+            var blogs = await ApiService.GetAllBlogsAsync();
+            apiResponse = $"Success! Retrieved {blogs.Count} blogs:\n\n" +
+                         string.Join("\n", blogs.Select(b => $"- [{b.Id}] {b.Title} by {b.Author}"));
+            apiSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            apiResponse = $"Error: {ex.Message}";
+            apiSuccess = false;
+        }
+    }
+
+    private async Task TestGetBlogById()
+    {
+        try
+        {
+            var blog = await ApiService.GetBlogByIdAsync(testBlogId);
+            if (blog != null)
+            {
+                apiResponse = $"Success! Found blog:\n\nID: {blog.Id}\nTitle: {blog.Title}\nAuthor: {blog.Author}\nContent: {blog.Content}\nPublished: {blog.IsPublished}";
+                apiSuccess = true;
+            }
+            else
+            {
+                apiResponse = $"Blog with ID {testBlogId} not found.";
+                apiSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            apiResponse = $"Error: {ex.Message}";
+            apiSuccess = false;
+        }
+    }
+
+    private async Task TestCreateBlog()
+    {
+        try
+        {
+            var success = await ApiService.CreateBlogAsync(newBlog);
+            if (success)
+            {
+                apiResponse = $"Success! Blog '{newBlog.Title}' created successfully.";
+                apiSuccess = true;
+                newBlog = new() { CreatedAt = DateTime.Now }; // Reset form
+                await RefreshData(); // Refresh stats
+            }
+            else
+            {
+                apiResponse = "Failed to create blog.";
+                apiSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            apiResponse = $"Error: {ex.Message}";
+            apiSuccess = false;
+        }
+    }
+
+    private async Task TestUpdateBlog()
+    {
+        try
+        {
+            if (updateBlog.Id <= 0)
+            {
+                apiResponse = "Please enter a valid Blog ID.";
+                apiSuccess = false;
+                return;
+            }
+
+            var success = await ApiService.UpdateBlogAsync(updateBlog.Id, updateBlog);
+            if (success)
+            {
+                apiResponse = $"Success! Blog ID {updateBlog.Id} updated successfully.";
+                apiSuccess = true;
+                updateBlog = new(); // Reset form
+                await RefreshData(); // Refresh stats
+            }
+            else
+            {
+                apiResponse = $"Failed to update blog ID {updateBlog.Id}.";
+                apiSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            apiResponse = $"Error: {ex.Message}";
+            apiSuccess = false;
+        }
+    }
+
+    private async Task TestDeleteBlog()
+    {
+        try
+        {
+            if (deleteBlogId <= 0)
+            {
+                apiResponse = "Please enter a valid Blog ID to delete.";
+                apiSuccess = false;
+                return;
+            }
+
+            var success = await ApiService.DeleteBlogAsync(deleteBlogId);
+            if (success)
+            {
+                apiResponse = $"Success! Blog ID {deleteBlogId} deleted successfully.";
+                apiSuccess = true;
+                deleteBlogId = 0; // Reset
+                await RefreshData(); // Refresh stats
+            }
+            else
+            {
+                apiResponse = $"Failed to delete blog ID {deleteBlogId}.";
+                apiSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            apiResponse = $"Error: {ex.Message}";
+            apiSuccess = false;
+        }
+    }
+
+    #endregion
+
+    #region Page API Tests
+
+    private async Task TestGetAllPages()
+    {
+        try
+        {
+            var pages = await ApiService.GetAllPagesAsync();
+            apiResponse = $"Success! Retrieved {pages.Count} pages:\n\n" +
+                         string.Join("\n", pages.Select(p => $"- [{p.Id}] {p.Title} (/{p.Slug})"));
+            apiSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            apiResponse = $"Error: {ex.Message}";
+            apiSuccess = false;
+        }
+    }
+
+    private async Task TestGetPageById()
+    {
+        try
+        {
+            var page = await ApiService.GetPageByIdAsync(testPageId);
+            if (page != null)
+            {
+                apiResponse = $"Success! Found page:\n\nID: {page.Id}\nTitle: {page.Title}\nSlug: {page.Slug}\nContent: {page.Content}\nPublished: {page.IsPublished}";
+                apiSuccess = true;
+            }
+            else
+            {
+                apiResponse = $"Page with ID {testPageId} not found.";
+                apiSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            apiResponse = $"Error: {ex.Message}";
+            apiSuccess = false;
+        }
+    }
+
+    private async Task TestCreatePage()
+    {
+        try
+        {
+            var success = await ApiService.CreatePageAsync(newPage);
+            if (success)
+            {
+                apiResponse = $"Success! Page '{newPage.Title}' created successfully.";
+                apiSuccess = true;
+                newPage = new(); // Reset form
+                await RefreshData(); // Refresh stats
+            }
+            else
+            {
+                apiResponse = "Failed to create page.";
+                apiSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            apiResponse = $"Error: {ex.Message}";
+            apiSuccess = false;
+        }
+    }
+
+    #endregion
+}
