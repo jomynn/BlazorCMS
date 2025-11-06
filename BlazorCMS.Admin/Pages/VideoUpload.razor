@@ -1,0 +1,354 @@
+@page "/videos/upload"
+@page "/videos/edit/{id:int}"
+@using BlazorCMS.Admin.Services
+@using BlazorCMS.Shared.DTOs
+@using Microsoft.AspNetCore.Components.Forms
+@inject AdminVideoService VideoService
+@inject NavigationManager Navigation
+@inject ILogger<VideoUpload> Logger
+
+<PageTitle>@(IsEditMode ? "Edit Video" : "Upload Video")</PageTitle>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3>@(IsEditMode ? "Edit Video" : "Upload New Video")</h3>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle"></i> @errorMessage
+                            <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle"></i> @successMessage
+                            <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="@videoModel" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+
+                        @if (!IsEditMode)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Video File</label>
+                                <InputFile OnChange="HandleFileSelected"
+                                          class="form-control"
+                                          accept="video/*"
+                                          disabled="@isUploading" />
+                                <div class="form-text">
+                                    Supported formats: MP4, AVI, MOV, WMV, FLV, MKV, WebM
+                                </div>
+
+                                @if (selectedFile != null)
+                                {
+                                    <div class="mt-2">
+                                        <span class="badge bg-info">
+                                            <i class="bi bi-file-earmark-play"></i> @selectedFile.Name
+                                            (@FormatFileSize(selectedFile.Size))
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (currentVideo != null)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Current Video</label>
+                                <div class="card">
+                                    <div class="card-body">
+                                        @if (!string.IsNullOrEmpty(currentVideo.ThumbnailFileName))
+                                        {
+                                            <img src="@VideoService.GetThumbnailUrl(currentVideo.Id)"
+                                                 alt="Thumbnail"
+                                                 class="img-fluid mb-2"
+                                                 style="max-height: 200px;">
+                                        }
+                                        <p class="mb-0">
+                                            <strong>File:</strong> @currentVideo.OriginalFileName<br>
+                                            <strong>Duration:</strong> @FormatDuration(currentVideo.DurationSeconds)<br>
+                                            <strong>Resolution:</strong> @currentVideo.Width x @currentVideo.Height<br>
+                                            <strong>Status:</strong>
+                                            <span class="badge bg-@(GetStatusColor(currentVideo.ProcessingStatus))">
+                                                @currentVideo.ProcessingStatus
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title *</label>
+                            <InputText id="title"
+                                      class="form-control"
+                                      @bind-Value="videoModel.Title"
+                                      disabled="@isUploading" />
+                            <ValidationMessage For="@(() => videoModel.Title)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <InputTextArea id="description"
+                                          class="form-control"
+                                          @bind-Value="videoModel.Description"
+                                          rows="4"
+                                          disabled="@isUploading" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tags" class="form-label">Tags</label>
+                            <InputText id="tags"
+                                      class="form-control"
+                                      @bind-Value="videoModel.Tags"
+                                      placeholder="e.g., tutorial, music, sports"
+                                      disabled="@isUploading" />
+                            <div class="form-text">
+                                Comma-separated tags
+                            </div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <InputCheckbox id="isPublished"
+                                          class="form-check-input"
+                                          @bind-Value="videoModel.IsPublished"
+                                          disabled="@isUploading" />
+                            <label class="form-check-label" for="isPublished">
+                                Published (visible to public)
+                            </label>
+                        </div>
+
+                        @if (uploadProgress > 0 && uploadProgress < 100)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Upload Progress</label>
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar"
+                                         style="width: @(uploadProgress)%"
+                                         aria-valuenow="@uploadProgress"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                        @uploadProgress%
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button"
+                                    class="btn btn-secondary"
+                                    @onclick="Cancel"
+                                    disabled="@isUploading">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </button>
+                            <button type="submit"
+                                    class="btn btn-primary"
+                                    disabled="@(isUploading || (!IsEditMode && selectedFile == null))">
+                                @if (isUploading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>@(IsEditMode ? "Updating..." : "Uploading...")</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-@(IsEditMode ? "save" : "upload")"></i>
+                                    @(IsEditMode ? "Update" : "Upload")
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEditMode => Id.HasValue && Id.Value > 0;
+
+    private VideoFormModel videoModel = new();
+    private VideoDTO? currentVideo;
+    private IBrowserFile? selectedFile;
+    private bool isUploading = false;
+    private int uploadProgress = 0;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode)
+        {
+            currentVideo = await VideoService.GetVideoByIdAsync(Id!.Value);
+            if (currentVideo != null)
+            {
+                videoModel = new VideoFormModel
+                    {
+                        Title = currentVideo.Title,
+                        Description = currentVideo.Description,
+                        Tags = currentVideo.Tags,
+                        IsPublished = currentVideo.IsPublished
+                    };
+            }
+            else
+            {
+                errorMessage = "Video not found";
+            }
+        }
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        errorMessage = null;
+
+        // Validate file type
+        var allowedExtensions = new[] { ".mp4", ".avi", ".mov", ".wmv", ".flv", ".mkv", ".webm" };
+        var extension = Path.GetExtension(selectedFile.Name).ToLowerInvariant();
+
+        if (!allowedExtensions.Contains(extension))
+        {
+            errorMessage = $"Invalid file type. Allowed: {string.Join(", ", allowedExtensions)}";
+            selectedFile = null;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = null;
+        successMessage = null;
+        isUploading = true;
+        uploadProgress = 0;
+
+        try
+        {
+            if (IsEditMode)
+            {
+                var updateDto = new UpdateVideoDTO
+                    {
+                        Id = Id!.Value,
+                        Title = videoModel.Title,
+                        Description = videoModel.Description,
+                        Tags = videoModel.Tags,
+                        IsPublished = videoModel.IsPublished
+                    };
+
+                var success = await VideoService.UpdateVideoAsync(updateDto);
+                if (success)
+                {
+                    successMessage = "Video updated successfully!";
+                    await Task.Delay(1500);
+                    Navigation.NavigateTo("/videos");
+                }
+                else
+                {
+                    errorMessage = "Failed to update video";
+                }
+            }
+            else if (selectedFile != null)
+            {
+                // Simulate upload progress
+                _ = Task.Run(async () =>
+                {
+                    for (int i = 0; i <= 90; i += 10)
+                    {
+                        uploadProgress = i;
+                        StateHasChanged();
+                        await Task.Delay(500);
+                    }
+                });
+
+                using var stream = selectedFile.OpenReadStream(maxAllowedSize: 1024 * 1024 * 500); // 500MB max
+
+                var result = await VideoService.UploadVideoAsync(
+                    stream,
+                    selectedFile.Name,
+                    videoModel.Title,
+                    videoModel.Description,
+                    videoModel.Tags,
+                    videoModel.IsPublished
+                );
+
+                uploadProgress = 100;
+
+                if (result.Success)
+                {
+                    successMessage = "Video uploaded successfully! Processing started.";
+                    await Task.Delay(2000);
+                    Navigation.NavigateTo("/videos");
+                }
+                else
+                {
+                    errorMessage = result.Message ?? "Upload failed";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during video submission");
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isUploading = false;
+            uploadProgress = 0;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/videos");
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private string FormatDuration(double seconds)
+    {
+        var timeSpan = TimeSpan.FromSeconds(seconds);
+        if (timeSpan.TotalHours >= 1)
+            return timeSpan.ToString(@"h\:mm\:ss");
+        return timeSpan.ToString(@"m\:ss");
+    }
+
+    private string GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "Completed" => "success",
+            "Processing" => "warning",
+            "Failed" => "danger",
+            _ => "secondary"
+        };
+    }
+
+    private class VideoFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? Tags { get; set; }
+        public bool IsPublished { get; set; }
+    }
+}

@@ -1,0 +1,244 @@
+@page "/videos/{id:int}"
+@using BlazorCMS.Client.Services
+@using BlazorCMS.Shared.DTOs
+@inject ClientVideoService VideoService
+@inject NavigationManager Navigation
+
+<PageTitle>@(video?.Title ?? "Video")</PageTitle>
+
+@if (isLoading)
+{
+    <div class="container my-5 text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (video == null)
+{
+    <div class="container my-5">
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> Video not found
+        </div>
+        <button class="btn btn-primary" @onclick="GoBack">
+            <i class="bi bi-arrow-left"></i> Back to Videos
+        </button>
+    </div>
+}
+else
+{
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-body p-0">
+                        <video id="videoPlayer"
+                               class="w-100"
+                               controls
+                               preload="metadata"
+                               style="background: #000;">
+                            <source src="@VideoService.GetVideoStreamUrl(video.Id, selectedQuality)" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h2>@video.Title</h2>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <small class="text-muted">
+                                    <i class="bi bi-eye"></i> @video.ViewCount views
+                                </small>
+                                <small class="text-muted ms-3">
+                                    <i class="bi bi-calendar"></i> @video.CreatedAt.ToString("MMMM dd, yyyy")
+                                </small>
+                            </div>
+
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary"
+                                        @onclick="DownloadVideo">
+                                    <i class="bi bi-download"></i> Download
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(video.Author))
+                        {
+                            <div class="mb-3">
+                                <strong>Author:</strong> @video.Author
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(video.Description))
+                        {
+                            <div class="mb-3">
+                                <h5>Description</h5>
+                                <p style="white-space: pre-wrap;">@video.Description</p>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(video.Tags))
+                        {
+                            <div class="mb-3">
+                                <h6>Tags</h6>
+                                @foreach (var tag in video.Tags.Split(','))
+                                {
+                                    <span class="badge bg-secondary me-2">@tag.Trim()</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                @if (video.ProcessedVersions != null && video.ProcessedVersions.Count > 1)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Quality</h5>
+                        </div>
+                        <div class="list-group list-group-flush">
+                            @foreach (var quality in video.ProcessedVersions.Keys.OrderByDescending(q => q))
+                            {
+                                <button class="list-group-item list-group-item-action @(selectedQuality == quality ? "active" : "")"
+                                        @onclick="() => ChangeQuality(quality)">
+                                    <i class="bi bi-@(selectedQuality == quality ? "check-circle-fill" : "circle")"></i>
+                                    @quality.ToUpper()
+                                    @if (quality == "original")
+                                    {
+                                        <span class="badge bg-primary ms-2">Best</span>
+                                    }
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Video Info</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <strong>Duration:</strong><br>
+                            @FormatDuration(video.DurationSeconds)
+                        </div>
+
+                        <div class="mb-2">
+                            <strong>Resolution:</strong><br>
+                            @video.Width x @video.Height
+                        </div>
+
+                        <div class="mb-2">
+                            <strong>File Size:</strong><br>
+                            @FormatFileSize(video.FileSizeBytes)
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(video.VideoCodec))
+                        {
+                            <div class="mb-2">
+                                <strong>Video Codec:</strong><br>
+                                @video.VideoCodec
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(video.AudioCodec))
+                        {
+                            <div class="mb-2">
+                                <strong>Audio Codec:</strong><br>
+                                @video.AudioCodec
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(video.FrameRate))
+                        {
+                            <div class="mb-2">
+                                <strong>Frame Rate:</strong><br>
+                                @video.FrameRate fps
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private VideoDTO? video;
+    private bool isLoading = true;
+    private string selectedQuality = "original";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVideo();
+    }
+
+    private async Task LoadVideo()
+    {
+        isLoading = true;
+        video = await VideoService.GetVideoByIdAsync(Id);
+
+        if (video != null && video.ProcessedVersions != null)
+        {
+            // Select best available quality
+            if (video.ProcessedVersions.ContainsKey("1080p"))
+                selectedQuality = "1080p";
+            else if (video.ProcessedVersions.ContainsKey("720p"))
+                selectedQuality = "720p";
+            else if (video.ProcessedVersions.ContainsKey("480p"))
+                selectedQuality = "480p";
+            else
+                selectedQuality = "original";
+        }
+
+        isLoading = false;
+    }
+
+    private void ChangeQuality(string quality)
+    {
+        selectedQuality = quality;
+    }
+
+    private void DownloadVideo()
+    {
+        if (video != null)
+        {
+            var downloadUrl = VideoService.GetDownloadUrl(video.Id, selectedQuality);
+            Navigation.NavigateTo(downloadUrl, true);
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/videos");
+    }
+
+    private string FormatDuration(double seconds)
+    {
+        var timeSpan = TimeSpan.FromSeconds(seconds);
+        if (timeSpan.TotalHours >= 1)
+            return timeSpan.ToString(@"h\:mm\:ss");
+        return timeSpan.ToString(@"m\:ss");
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}

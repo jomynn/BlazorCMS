@@ -38,6 +38,7 @@ builder.Services.AddAuthorizationCore();
 //builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 builder.Services.AddScoped<AdminAuthService>();
 builder.Services.AddScoped<AdminBlogService>();
+builder.Services.AddScoped<AdminVideoService>();
 
 // 🔹 Add HTTP Client
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7250/api") });
