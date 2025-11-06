@@ -77,6 +77,18 @@ try
     builder.Services.AddScoped<BlogService>();
     builder.Services.AddScoped<PageService>();
     builder.Services.AddScoped<DatabaseInitializer>();
+
+    // ✅ Register Media Processing Services
+    builder.Services.AddScoped<BlazorCMS.API.Services.IImageProcessingService, BlazorCMS.API.Services.ImageProcessingService>();
+    builder.Services.AddScoped<BlazorCMS.API.Services.IVideoProcessingService, BlazorCMS.API.Services.VideoProcessingService>();
+    builder.Services.AddScoped<BlazorCMS.API.Services.IMediaMetadataService, BlazorCMS.API.Services.MediaMetadataService>();
+
+    // ✅ Register S3 Storage Service
+    builder.Services.AddHttpClient();
+    builder.Services.AddDefaultAWSOptions(configuration.GetAWSOptions());
+    builder.Services.AddAWSService<Amazon.S3.IAmazonS3>();
+    builder.Services.AddScoped<BlazorCMS.API.Services.IS3StorageService, BlazorCMS.API.Services.S3StorageService>();
+
     builder.Services.AddAuthorization();
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
