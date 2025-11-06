@@ -1,0 +1,294 @@
+{
+  "name": "BlazorCMS - Scheduled Blog Publishing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "name": "Schedule - Check Every 15 Min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "blazorCmsApi",
+        "requestMethod": "GET",
+        "url": "={{$env.BLAZORCMS_API_URL}}/api/blog",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{\"Bearer \" + $env.BLAZORCMS_JWT_TOKEN}}"
+            }
+          ]
+        }
+      },
+      "name": "Get All Blog Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter blog posts that should be published\nconst now = new Date();\nconst posts = items[0].json;\n\nconst postsToPublish = posts.filter(post => {\n  // Check if post is not published yet\n  if (post.isPublished) return false;\n  \n  // Check if post has a scheduled publish date\n  if (!post.publishedDate) return false;\n  \n  // Check if the scheduled date has passed\n  const publishDate = new Date(post.publishedDate);\n  return publishDate <= now;\n});\n\nreturn postsToPublish.map(post => ({\n  json: post\n}));"
+      },
+      "name": "Filter Posts to Publish",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$input.all().length}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "name": "Check If Posts Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "blazorCmsApi",
+        "requestMethod": "PUT",
+        "url": "={{$env.BLAZORCMS_API_URL}}/api/blog/{{$json.id}}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{\"Bearer \" + $env.BLAZORCMS_JWT_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{$json.id}}"
+            },
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "content",
+              "value": "={{$json.content}}"
+            },
+            {
+              "name": "authorId",
+              "value": "={{$json.authorId}}"
+            },
+            {
+              "name": "isPublished",
+              "value": "true"
+            },
+            {
+              "name": "publishedDate",
+              "value": "={{new Date().toISOString()}}"
+            }
+          ]
+        }
+      },
+      "name": "Publish Blog Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1130, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "={{$env.N8N_WEBHOOK_BLOG_PUBLISHED}}",
+        "responseMode": "lastNode",
+        "options": {},
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "blogId",
+              "value": "={{$json.id}}"
+            },
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "publishedDate",
+              "value": "={{new Date().toISOString()}}"
+            }
+          ]
+        }
+      },
+      "name": "Trigger Social Media Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1350, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.BLAZORCMS_FROM_EMAIL || 'noreply@blazorcms.com'}}",
+        "toEmail": "={{$json.authorEmail || $env.ADMIN_EMAIL}}",
+        "subject": "Your scheduled blog post has been published!",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: #10B981; color: white; padding: 20px; text-align: center; }\n    .content { padding: 20px; background: #f9f9f9; }\n    .button { display: inline-block; padding: 10px 20px; background: #10B981; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🚀 Your Post is Live!</h1>\n    </div>\n    <div class=\"content\">\n      <h2>{{$json.title}}</h2>\n      <p>Your scheduled blog post has been successfully published!</p>\n      <p><strong>Published:</strong> {{new Date().toLocaleString()}}</p>\n      <a href=\"{{$env.BLAZORCMS_PUBLIC_URL}}/blog/{{$json.id}}\" class=\"button\">View Your Post</a>\n      <p>Your post has also been shared on your connected social media channels.</p>\n      <p>Keep creating great content!</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "name": "Notify Author",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1350, 300],
+      "credentials": {
+        "smtp": {
+          "id": "4",
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "success"
+            },
+            {
+              "name": "publishedCount",
+              "value": "={{$input.all().length}}"
+            }
+          ]
+        }
+      },
+      "name": "Success Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1570, 250]
+    }
+  ],
+  "connections": {
+    "Schedule - Check Every 15 Min": {
+      "main": [
+        [
+          {
+            "node": "Get All Blog Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Blog Posts": {
+      "main": [
+        [
+          {
+            "node": "Filter Posts to Publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Posts to Publish": {
+      "main": [
+        [
+          {
+            "node": "Check If Posts Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Posts Found": {
+      "main": [
+        [
+          {
+            "node": "Publish Blog Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Blog Post": {
+      "main": [
+        [
+          {
+            "node": "Trigger Social Media Workflow",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Author",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Social Media Workflow": {
+      "main": [
+        [
+          {
+            "node": "Success Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Author": {
+      "main": [
+        [
+          {
+            "node": "Success Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "BlazorCMS",
+      "id": "blazorcms"
+    },
+    {
+      "name": "Publishing",
+      "id": "publishing"
+    }
+  ],
+  "meta": {
+    "instanceId": "blazorcms-example"
+  }
+}

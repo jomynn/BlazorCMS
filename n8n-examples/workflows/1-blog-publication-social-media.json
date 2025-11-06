@@ -1,0 +1,221 @@
+{
+  "name": "BlazorCMS - Blog Publication to Social Media",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "blazorcms-blog-published",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook - Blog Published",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "blazorcms-blog-published"
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "blazorCmsApi",
+        "requestMethod": "GET",
+        "url": "={{$env.BLAZORCMS_API_URL}}/api/blog/{{$json.body.blogId}}",
+        "options": {
+          "timeout": 10000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{\"Bearer \" + $env.BLAZORCMS_JWT_TOKEN}}"
+            }
+          ]
+        }
+      },
+      "name": "Get Blog Post Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.isPublished}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Check If Published",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "text": "🚀 New Blog Post Alert!\n\n{{$json.title}}\n\nRead more: {{$env.BLAZORCMS_PUBLIC_URL}}/blog/{{$json.id}}\n\n#BlazorCMS #Blog #ContentManagement",
+        "additionalFields": {}
+      },
+      "name": "Post to Twitter",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 1,
+      "position": [910, 200],
+      "credentials": {
+        "twitterOAuth1Api": {
+          "id": "1",
+          "name": "Twitter Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "📝 New blog post published!\n\nTitle: {{$json.title}}\nAuthor: {{$json.author}}\n\nRead here: {{$env.BLAZORCMS_PUBLIC_URL}}/blog/{{$json.id}}\n\n#BlazorCMS #TechBlog",
+        "additionalFields": {}
+      },
+      "name": "Post to LinkedIn",
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [910, 300],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "2",
+          "name": "LinkedIn Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": "New blog post published: {{$json.title}}\n\n{{$json.content.substring(0, 200)}}...\n\nRead more: {{$env.BLAZORCMS_PUBLIC_URL}}/blog/{{$json.id}}",
+        "additionalFields": {}
+      },
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [910, 400],
+      "credentials": {
+        "slackApi": {
+          "id": "3",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "success"
+            },
+            {
+              "name": "message",
+              "value": "Blog post shared on social media"
+            }
+          ]
+        }
+      },
+      "name": "Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1130, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Blog Published": {
+      "main": [
+        [
+          {
+            "node": "Get Blog Post Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Blog Post Details": {
+      "main": [
+        [
+          {
+            "node": "Check If Published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Published": {
+      "main": [
+        [
+          {
+            "node": "Post to Twitter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Twitter": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Slack": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "BlazorCMS",
+      "id": "blazorcms"
+    },
+    {
+      "name": "Social Media",
+      "id": "social"
+    }
+  ],
+  "meta": {
+    "instanceId": "blazorcms-example"
+  }
+}

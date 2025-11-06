@@ -1,0 +1,237 @@
+{
+  "name": "BlazorCMS - Email Subscribers on New Post",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "blazorcms-notify-subscribers",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook - New Blog Post",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "blazorcms-notify-subscribers"
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "blazorCmsApi",
+        "requestMethod": "GET",
+        "url": "={{$env.BLAZORCMS_API_URL}}/api/blog/{{$json.body.blogId}}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{\"Bearer \" + $env.BLAZORCMS_JWT_TOKEN}}"
+            }
+          ]
+        }
+      },
+      "name": "Get Blog Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "listId": "={{$env.MAILCHIMP_LIST_ID}}",
+        "options": {
+          "status": "subscribed"
+        }
+      },
+      "name": "Get Subscribers from Mailchimp",
+      "type": "n8n-nodes-base.mailchimp",
+      "typeVersion": 1,
+      "position": [690, 200],
+      "credentials": {
+        "mailchimpApi": {
+          "id": "5",
+          "name": "Mailchimp"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "sheetId": "={{$env.GOOGLE_SHEETS_ID}}",
+        "range": "Subscribers!A:C",
+        "options": {}
+      },
+      "name": "Get Subscribers from Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [690, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "6",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine subscribers from all sources and remove duplicates\nconst mailchimpSubscribers = $input.item(0)?.json?.members || [];\nconst sheetsSubscribers = $input.item(1)?.json || [];\n\nconst allEmails = new Set();\nconst subscribers = [];\n\n// Add Mailchimp subscribers\nmailchimpSubscribers.forEach(sub => {\n  if (sub.email_address && !allEmails.has(sub.email_address)) {\n    allEmails.add(sub.email_address);\n    subscribers.push({\n      email: sub.email_address,\n      firstName: sub.merge_fields?.FNAME || '',\n      lastName: sub.merge_fields?.LNAME || ''\n    });\n  }\n});\n\n// Add Google Sheets subscribers\nsheetsSubscribers.forEach(sub => {\n  const email = sub['Email'];\n  if (email && !allEmails.has(email)) {\n    allEmails.add(email);\n    subscribers.push({\n      email: email,\n      firstName: sub['First Name'] || '',\n      lastName: sub['Last Name'] || ''\n    });\n  }\n});\n\nreturn subscribers.map(sub => ({ json: sub }));"
+      },
+      "name": "Merge & Deduplicate Subscribers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 250]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.BLAZORCMS_FROM_EMAIL || 'noreply@blazorcms.com'}}",
+        "toEmail": "={{$json.email}}",
+        "subject": "New Blog Post: {{$node['Get Blog Post'].json.title}}",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: #4F46E5; color: white; padding: 20px; text-align: center; }\n    .content { padding: 20px; background: #f9f9f9; }\n    .excerpt { background: white; padding: 15px; border-left: 4px solid #4F46E5; margin: 20px 0; }\n    .button { display: inline-block; padding: 12px 30px; background: #4F46E5; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }\n    .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; border-top: 1px solid #ddd; margin-top: 20px; }\n    .unsubscribe { color: #999; font-size: 11px; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>📝 New Blog Post</h1>\n    </div>\n    <div class=\"content\">\n      <p>Hi {{$json.firstName || 'there'}},</p>\n      <p>We've just published a new blog post that we think you'll love!</p>\n      \n      <h2>{{$node['Get Blog Post'].json.title}}</h2>\n      \n      <div class=\"excerpt\">\n        <p>{{$node['Get Blog Post'].json.content.substring(0, 300)}}...</p>\n      </div>\n      \n      <p><strong>Author:</strong> {{$node['Get Blog Post'].json.author || 'BlazorCMS Team'}}</p>\n      <p><strong>Published:</strong> {{new Date($node['Get Blog Post'].json.publishedDate).toLocaleDateString()}}</p>\n      \n      <a href=\"{{$env.BLAZORCMS_PUBLIC_URL}}/blog/{{$node['Get Blog Post'].json.id}}\" class=\"button\">Read Full Article</a>\n      \n      <p>Thank you for being a valued subscriber!</p>\n    </div>\n    <div class=\"footer\">\n      <p>You're receiving this email because you subscribed to BlazorCMS updates.</p>\n      <p class=\"unsubscribe\"><a href=\"{{$env.BLAZORCMS_PUBLIC_URL}}/unsubscribe?email={{$json.email}}\">Unsubscribe</a></p>\n      <p>&copy; 2025 BlazorCMS. All rights reserved.</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "name": "Send Email to Subscriber",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1130, 250],
+      "credentials": {
+        "smtp": {
+          "id": "4",
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Wait 100ms between each email to avoid rate limiting\nawait new Promise(resolve => setTimeout(resolve, 100));\nreturn items;"
+      },
+      "name": "Rate Limit Delay",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 250]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channelId": "={{$env.SLACK_ADMIN_CHANNEL}}",
+        "text": "📧 Subscriber notification completed!\n\nBlog Post: {{$node['Get Blog Post'].json.title}}\nEmails Sent: {{$input.all().length}}\nTimestamp: {{new Date().toLocaleString()}}",
+        "otherOptions": {}
+      },
+      "name": "Notify Admin - Emails Sent",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1570, 250],
+      "credentials": {
+        "slackApi": {
+          "id": "3",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - New Blog Post": {
+      "main": [
+        [
+          {
+            "node": "Get Blog Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Blog Post": {
+      "main": [
+        [
+          {
+            "node": "Get Subscribers from Mailchimp",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Subscribers from Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Subscribers from Mailchimp": {
+      "main": [
+        [
+          {
+            "node": "Merge & Deduplicate Subscribers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Subscribers from Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Merge & Deduplicate Subscribers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge & Deduplicate Subscribers": {
+      "main": [
+        [
+          {
+            "node": "Send Email to Subscriber",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email to Subscriber": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin - Emails Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "BlazorCMS",
+      "id": "blazorcms"
+    },
+    {
+      "name": "Email Marketing",
+      "id": "email"
+    }
+  ],
+  "meta": {
+    "instanceId": "blazorcms-example"
+  }
+}

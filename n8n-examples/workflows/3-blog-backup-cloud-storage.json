@@ -1,0 +1,230 @@
+{
+  "name": "BlazorCMS - Blog Backup to Cloud Storage",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "name": "Schedule - Daily Backup",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "blazorCmsApi",
+        "requestMethod": "GET",
+        "url": "={{$env.BLAZORCMS_API_URL}}/api/blog",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{\"Bearer \" + $env.BLAZORCMS_JWT_TOKEN}}"
+            }
+          ]
+        }
+      },
+      "name": "Get All Blog Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create a backup JSON file with all blog posts\nconst blogPosts = items[0].json;\n\nconst backup = {\n  backupDate: new Date().toISOString(),\n  totalPosts: blogPosts.length,\n  posts: blogPosts,\n  metadata: {\n    source: 'BlazorCMS',\n    version: '1.0',\n    format: 'json'\n  }\n};\n\nconst fileName = `blazorcms-backup-${new Date().toISOString().split('T')[0]}.json`;\nconst fileContent = JSON.stringify(backup, null, 2);\n\nreturn [\n  {\n    json: {\n      fileName: fileName,\n      fileContent: fileContent,\n      backupDate: backup.backupDate,\n      totalPosts: backup.totalPosts\n    }\n  }\n];"
+      },
+      "name": "Create Backup JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "fileName": "={{$json.fileName}}",
+        "binaryData": false,
+        "fileContent": "={{$json.fileContent}}",
+        "options": {
+          "parents": [
+            "={{$env.GOOGLE_DRIVE_BACKUP_FOLDER_ID}}"
+          ]
+        }
+      },
+      "name": "Upload to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [910, 200],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "7",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "={{$env.AWS_S3_BUCKET_NAME}}",
+        "fileName": "={{\"backups/\" + $json.fileName}}",
+        "binaryData": false,
+        "fileContent": "={{$json.fileContent}}",
+        "options": {}
+      },
+      "name": "Upload to AWS S3",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [910, 300],
+      "credentials": {
+        "aws": {
+          "id": "8",
+          "name": "AWS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "containerName": "={{$env.AZURE_CONTAINER_NAME}}",
+        "blobName": "={{\"backups/\" + $json.fileName}}",
+        "binaryData": false,
+        "blobContent": "={{$json.fileContent}}",
+        "options": {}
+      },
+      "name": "Upload to Azure Blob",
+      "type": "n8n-nodes-base.microsoftAzure",
+      "typeVersion": 1,
+      "position": [910, 400],
+      "credentials": {
+        "microsoftAzureStorageApi": {
+          "id": "9",
+          "name": "Azure Storage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.BLAZORCMS_FROM_EMAIL || 'noreply@blazorcms.com'}}",
+        "toEmail": "={{$env.ADMIN_EMAIL}}",
+        "subject": "BlazorCMS - Daily Backup Completed",
+        "emailType": "text",
+        "message": "Daily backup completed successfully!\n\nBackup Details:\n- Date: {{$json.backupDate}}\n- Total Posts: {{$json.totalPosts}}\n- File Name: {{$json.fileName}}\n- Storage Locations: Google Drive, AWS S3, Azure Blob\n\nThe backup has been uploaded to all configured cloud storage locations.\n\nBlazorCMS Automation System",
+        "options": {}
+      },
+      "name": "Send Backup Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1130, 300],
+      "credentials": {
+        "smtp": {
+          "id": "4",
+          "name": "SMTP Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule - Daily Backup": {
+      "main": [
+        [
+          {
+            "node": "Get All Blog Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Blog Posts": {
+      "main": [
+        [
+          {
+            "node": "Create Backup JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Backup JSON": {
+      "main": [
+        [
+          {
+            "node": "Upload to Google Drive",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upload to AWS S3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upload to Azure Blob",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Send Backup Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to AWS S3": {
+      "main": [
+        [
+          {
+            "node": "Send Backup Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Azure Blob": {
+      "main": [
+        [
+          {
+            "node": "Send Backup Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "BlazorCMS",
+      "id": "blazorcms"
+    },
+    {
+      "name": "Backup",
+      "id": "backup"
+    }
+  ],
+  "meta": {
+    "instanceId": "blazorcms-example"
+  }
+}

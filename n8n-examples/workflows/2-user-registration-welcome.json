@@ -1,0 +1,275 @@
+{
+  "name": "BlazorCMS - User Registration Welcome Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "blazorcms-user-registered",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook - User Registered",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "blazorcms-user-registered"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "email",
+              "value": "={{$json.body.email}}"
+            },
+            {
+              "name": "fullName",
+              "value": "={{$json.body.fullName || 'New User'}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.body.userId}}"
+            },
+            {
+              "name": "registeredOn",
+              "value": "={{$json.body.registeredOn || new Date().toISOString()}}"
+            }
+          ]
+        }
+      },
+      "name": "Extract User Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.BLAZORCMS_FROM_EMAIL || 'noreply@blazorcms.com'}}",
+        "toEmail": "={{$json.email}}",
+        "subject": "Welcome to BlazorCMS!",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: #4F46E5; color: white; padding: 20px; text-align: center; }\n    .content { padding: 20px; background: #f9f9f9; }\n    .button { display: inline-block; padding: 10px 20px; background: #4F46E5; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }\n    .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>Welcome to BlazorCMS!</h1>\n    </div>\n    <div class=\"content\">\n      <h2>Hi {{$json.fullName}},</h2>\n      <p>Thank you for registering with BlazorCMS. We're excited to have you as part of our community!</p>\n      <p>Your account has been successfully created and you can now:</p>\n      <ul>\n        <li>Create and publish blog posts</li>\n        <li>Manage your content pages</li>\n        <li>Customize your profile</li>\n        <li>Collaborate with other users</li>\n      </ul>\n      <p>Get started by logging into your account:</p>\n      <a href=\"{{$env.BLAZORCMS_PUBLIC_URL}}/login\" class=\"button\">Login to Your Account</a>\n      <p>If you have any questions, feel free to reach out to our support team.</p>\n      <p>Happy blogging!</p>\n      <p><strong>The BlazorCMS Team</strong></p>\n    </div>\n    <div class=\"footer\">\n      <p>This email was sent to {{$json.email}}</p>\n      <p>&copy; 2025 BlazorCMS. All rights reserved.</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [690, 200],
+      "credentials": {
+        "smtp": {
+          "id": "4",
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addUpdateMember",
+        "listId": "={{$env.MAILCHIMP_LIST_ID}}",
+        "email": "={{$json.email}}",
+        "status": "subscribed",
+        "options": {
+          "mergeFields": {
+            "mergeFieldsValues": [
+              {
+                "name": "FNAME",
+                "value": "={{$json.fullName.split(' ')[0]}}"
+              },
+              {
+                "name": "LNAME",
+                "value": "={{$json.fullName.split(' ').slice(1).join(' ')}}"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Add to Mailchimp",
+      "type": "n8n-nodes-base.mailchimp",
+      "typeVersion": 1,
+      "position": [690, 300],
+      "credentials": {
+        "mailchimpApi": {
+          "id": "5",
+          "name": "Mailchimp"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channelId": "={{$env.SLACK_ADMIN_CHANNEL}}",
+        "text": "🎉 New user registered!\n\nEmail: {{$json.email}}\nName: {{$json.fullName}}\nUser ID: {{$json.userId}}\nRegistered: {{$json.registeredOn}}",
+        "otherOptions": {}
+      },
+      "name": "Notify Admin Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [690, 400],
+      "credentials": {
+        "slackApi": {
+          "id": "3",
+          "name": "Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "sheetId": "={{$env.GOOGLE_SHEETS_ID}}",
+        "range": "Users!A:D",
+        "options": {},
+        "columns": {
+          "mappings": [
+            {
+              "column": "Email",
+              "value": "={{$json.email}}"
+            },
+            {
+              "column": "Full Name",
+              "value": "={{$json.fullName}}"
+            },
+            {
+              "column": "User ID",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "column": "Registered On",
+              "value": "={{$json.registeredOn}}"
+            }
+          ]
+        }
+      },
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [690, 500],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "6",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "success"
+            },
+            {
+              "name": "message",
+              "value": "User registration workflow completed"
+            }
+          ]
+        }
+      },
+      "name": "Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [910, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - User Registered": {
+      "main": [
+        [
+          {
+            "node": "Extract User Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract User Data": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Add to Mailchimp",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Admin Team",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Mailchimp": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Admin Team": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "BlazorCMS",
+      "id": "blazorcms"
+    },
+    {
+      "name": "User Management",
+      "id": "users"
+    }
+  ],
+  "meta": {
+    "instanceId": "blazorcms-example"
+  }
+}
