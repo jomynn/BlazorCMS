@@ -77,6 +77,11 @@ try
     builder.Services.AddScoped<BlogService>();
     builder.Services.AddScoped<PageService>();
     builder.Services.AddScoped<DatabaseInitializer>();
+
+    // ✅ Register Video Services
+    builder.Services.AddSingleton<BlazorCMS.Infrastructure.Video.VideoProcessingService>();
+    builder.Services.AddScoped<BlazorCMS.Data.Repositories.IVideoRepository, BlazorCMS.Data.Repositories.VideoRepository>();
+    builder.Services.AddScoped<VideoService>();
     builder.Services.AddAuthorization();
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();

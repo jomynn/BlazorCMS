@@ -1,0 +1,177 @@
+@page "/videos"
+@using BlazorCMS.Client.Services
+@using BlazorCMS.Shared.DTOs
+@inject ClientVideoService VideoService
+@inject NavigationManager Navigation
+
+<PageTitle>Videos</PageTitle>
+
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Video Gallery</h1>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="input-group">
+                <input type="text"
+                       class="form-control"
+                       placeholder="Search videos..."
+                       @bind="searchTerm"
+                       @bind:event="oninput"
+                       @onkeyup="HandleSearch" />
+                <button class="btn btn-primary" @onclick="Search">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (videos.Count == 0)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No videos available at the moment.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var video in videos)
+            {
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm hover-card" style="cursor: pointer;" @onclick="() => ViewVideo(video.Id)">
+                        <div class="position-relative">
+                            @if (!string.IsNullOrEmpty(video.ThumbnailFileName))
+                            {
+                                <img src="@VideoService.GetThumbnailUrl(video.Id)"
+                                     class="card-img-top"
+                                     alt="@video.Title"
+                                     style="height: 220px; object-fit: cover;">
+                            }
+                            else
+                            {
+                                <div class="card-img-top bg-dark d-flex align-items-center justify-content-center"
+                                     style="height: 220px;">
+                                    <i class="bi bi-play-circle" style="font-size: 4rem; color: white; opacity: 0.7;"></i>
+                                </div>
+                            }
+
+                            <div class="position-absolute bottom-0 end-0 m-2">
+                                <span class="badge bg-dark">
+                                    @FormatDuration(video.DurationSeconds)
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <h5 class="card-title">@video.Title</h5>
+
+                            @if (!string.IsNullOrEmpty(video.Description))
+                            {
+                                <p class="card-text text-muted">
+                                    @(video.Description.Length > 100
+                                        ? video.Description.Substring(0, 100) + "..."
+                                        : video.Description)
+                                </p>
+                            }
+
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-eye"></i> @video.ViewCount views
+                                </small>
+
+                                <small class="text-muted">
+                                    @video.CreatedAt.ToString("MMM dd, yyyy")
+                                </small>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(video.Tags))
+                            {
+                                <div class="mt-2">
+                                    @foreach (var tag in video.Tags.Split(',').Take(3))
+                                    {
+                                        <span class="badge bg-secondary me-1">@tag.Trim()</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .hover-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+        }
+</style>
+
+@code {
+    private List<VideoDTO> videos = new();
+    private bool isLoading = true;
+    private string searchTerm = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVideos();
+    }
+
+    private async Task LoadVideos()
+    {
+        isLoading = true;
+        videos = await VideoService.GetPublishedVideosAsync();
+        isLoading = false;
+    }
+
+    private async Task Search()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            await LoadVideos();
+        }
+        else
+        {
+            isLoading = true;
+            videos = await VideoService.SearchVideosAsync(searchTerm);
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSearch(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await Search();
+        }
+    }
+
+    private void ViewVideo(int id)
+    {
+        Navigation.NavigateTo($"/videos/{id}");
+    }
+
+    private string FormatDuration(double seconds)
+    {
+        var timeSpan = TimeSpan.FromSeconds(seconds);
+        if (timeSpan.TotalHours >= 1)
+            return timeSpan.ToString(@"h\:mm\:ss");
+        return timeSpan.ToString(@"m\:ss");
+    }
+}

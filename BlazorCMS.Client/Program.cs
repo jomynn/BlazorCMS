@@ -17,6 +17,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseU
 builder.Services.AddScoped<ClientAuthService>();
 builder.Services.AddScoped<ClientBlogService>();
 builder.Services.AddScoped<ClientPageService>();
+builder.Services.AddScoped<ClientVideoService>();
 
 // Register MudBlazor UI Framework
 builder.Services.AddMudServices();

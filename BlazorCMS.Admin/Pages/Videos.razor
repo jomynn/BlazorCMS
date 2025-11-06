@@ -1,0 +1,195 @@
+@page "/videos"
+@using BlazorCMS.Admin.Services
+@using BlazorCMS.Shared.DTOs
+@inject AdminVideoService VideoService
+@inject NavigationManager Navigation
+@inject ILogger<Videos> Logger
+
+<PageTitle>Video Management</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Video Management</h2>
+        </div>
+        <div class="col text-end">
+            <button class="btn btn-primary" @onclick="NavigateToUpload">
+                <i class="bi bi-upload"></i> Upload Video
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (videos.Count == 0)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No videos found. Upload your first video to get started!
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var video in videos)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        @if (!string.IsNullOrEmpty(video.ThumbnailFileName))
+                        {
+                            <img src="@VideoService.GetThumbnailUrl(video.Id)"
+                                 class="card-img-top"
+                                 alt="@video.Title"
+                                 style="height: 200px; object-fit: cover;">
+                        }
+                        else
+                        {
+                            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center"
+                                 style="height: 200px;">
+                                <i class="bi bi-film" style="font-size: 3rem; color: white;"></i>
+                            </div>
+                        }
+
+                        <div class="card-body">
+                            <h5 class="card-title">@video.Title</h5>
+
+                            <div class="mb-2">
+                                @if (video.ProcessingStatus == "Completed")
+                                {
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Completed
+                                    </span>
+                                }
+                                else if (video.ProcessingStatus == "Processing")
+                                {
+                                    <span class="badge bg-warning">
+                                        <i class="bi bi-hourglass-split"></i> Processing
+                                    </span>
+                                }
+                                else if (video.ProcessingStatus == "Failed")
+                                {
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle"></i> Failed
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-clock"></i> Pending
+                                    </span>
+                                }
+
+                                @if (video.IsPublished)
+                                {
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-globe"></i> Published
+                                    </span>
+                                }
+                            </div>
+
+                            <p class="card-text text-muted small">
+                                <i class="bi bi-clock"></i> @FormatDuration(video.DurationSeconds)<br>
+                                <i class="bi bi-aspect-ratio"></i> @video.Width x @video.Height<br>
+                                <i class="bi bi-file-earmark"></i> @FormatFileSize(video.FileSizeBytes)<br>
+                                <i class="bi bi-eye"></i> @video.ViewCount views
+                            </p>
+
+                            @if (!string.IsNullOrEmpty(video.Description))
+                            {
+                                <p class="card-text">
+                                    @(video.Description.Length > 100
+                                        ? video.Description.Substring(0, 100) + "..."
+                                        : video.Description)
+                                </p>
+                            }
+                        </div>
+
+                        <div class="card-footer">
+                            <div class="btn-group w-100" role="group">
+                                <button class="btn btn-sm btn-outline-primary"
+                                        @onclick="() => NavigateToEdit(video.Id)">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick="() => DeleteVideo(video.Id)">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<VideoDTO> videos = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVideos();
+    }
+
+    private async Task LoadVideos()
+    {
+        isLoading = true;
+        try
+        {
+            videos = await VideoService.GetAllVideosAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load videos");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void NavigateToUpload()
+    {
+        Navigation.NavigateTo("/videos/upload");
+    }
+
+    private void NavigateToEdit(int id)
+    {
+        Navigation.NavigateTo($"/videos/edit/{id}");
+    }
+
+    private async Task DeleteVideo(int id)
+    {
+        if (await VideoService.DeleteVideoAsync(id))
+        {
+            await LoadVideos();
+        }
+    }
+
+    private string FormatDuration(double seconds)
+    {
+        var timeSpan = TimeSpan.FromSeconds(seconds);
+        if (timeSpan.TotalHours >= 1)
+            return timeSpan.ToString(@"h\:mm\:ss");
+        return timeSpan.ToString(@"m\:ss");
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}
