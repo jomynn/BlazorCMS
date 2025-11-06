@@ -1,0 +1,576 @@
+@page "/videos"
+@using System.Net.Http.Headers
+@using System.Text.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<h3>Video Manager</h3>
+
+<div class="container">
+    <div class="upload-section">
+        <h4>Upload Videos</h4>
+        <InputFile OnChange="HandleFileSelection" multiple accept="video/*" />
+
+        @if (selectedFiles.Any())
+        {
+            <div class="file-list">
+                <h5>Selected Files (@selectedFiles.Count)</h5>
+                @foreach (var file in selectedFiles)
+                {
+                    <div class="file-item">
+                        <span>@file.Name (@FormatBytes(file.Size))</span>
+                        <button @onclick="() => RemoveFile(file)">Remove</button>
+                    </div>
+                }
+            </div>
+
+            <button class="btn btn-primary" @onclick="UploadVideos" disabled="@isUploading">
+                @if (isUploading)
+                {
+                    <span>Uploading... @uploadProgress%</span>
+                }
+                else
+                {
+                    <span>Upload All</span>
+                }
+            </button>
+        }
+
+        @if (!string.IsNullOrEmpty(uploadMessage))
+        {
+            <div class="@(uploadSuccess ? "alert-success" : "alert-error")">
+                @uploadMessage
+            </div>
+        }
+    </div>
+
+    <div class="video-list-section">
+        <h4>Uploaded Videos</h4>
+        <button class="btn btn-secondary" @onclick="LoadVideos">Refresh List</button>
+
+        @if (videos.Any())
+        {
+            <div class="video-grid">
+                @foreach (var video in videos)
+                {
+                    <div class="video-card @(selectedVideoIds.Contains(video.Id) ? "selected" : "")">
+                        <input type="checkbox"
+                               checked="@selectedVideoIds.Contains(video.Id)"
+                               @onchange="() => ToggleVideoSelection(video.Id)" />
+                        <div class="video-info">
+                            <strong>@video.FileName</strong>
+                            <p>Duration: @FormatDuration(video.Duration)</p>
+                            <p>Size: @FormatBytes(video.FileSizeBytes)</p>
+                            <p>Resolution: @video.Resolution</p>
+                            <p>Status: @video.Status</p>
+                        </div>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeleteVideo(video.Id)">Delete</button>
+                    </div>
+                }
+            </div>
+
+            @if (selectedVideoIds.Count >= 2)
+            {
+                <div class="merge-section">
+                    <h5>Merge Selected Videos (@selectedVideoIds.Count videos)</h5>
+                    <p>Total Duration: @FormatDuration(GetTotalDuration())</p>
+                    <button class="btn btn-success" @onclick="MergeVideos" disabled="@isMerging">
+                        @if (isMerging)
+                        {
+                            <span>Merging... @mergeProgress%</span>
+                        }
+                        else
+                        {
+                            <span>Merge Videos</span>
+                        }
+                    </button>
+                </div>
+            }
+        }
+        else if (isLoading)
+        {
+            <p>Loading videos...</p>
+        }
+        else
+        {
+            <p>No videos uploaded yet.</p>
+        }
+    </div>
+
+    <div class="merge-jobs-section">
+        <h4>Merge Jobs</h4>
+        <button class="btn btn-secondary" @onclick="LoadMergeJobs">Refresh Jobs</button>
+
+        @if (mergeJobs.Any())
+        {
+            <div class="jobs-list">
+                @foreach (var job in mergeJobs)
+                {
+                    <div class="job-card">
+                        <strong>Job #@job.Id</strong>
+                        <p>Status: @job.Status</p>
+                        <p>Progress: @job.Progress%</p>
+                        <p>Videos: @job.VideoIds.Count</p>
+                        <p>Duration: @FormatDuration(job.TotalDuration)</p>
+                        <p>Created: @job.CreatedAt.ToString("g")</p>
+                        @if (job.Status == "Completed" && job.CompletedAt.HasValue)
+                        {
+                            <p>Completed: @job.CompletedAt.Value.ToString("g")</p>
+                        }
+                        @if (!string.IsNullOrEmpty(job.ErrorMessage))
+                        {
+                            <p class="error">Error: @job.ErrorMessage</p>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<IBrowserFile> selectedFiles = new();
+    private List<VideoDto> videos = new();
+    private List<int> selectedVideoIds = new();
+    private List<MergeJobDto> mergeJobs = new();
+
+    private bool isUploading = false;
+    private bool isMerging = false;
+    private bool isLoading = false;
+    private int uploadProgress = 0;
+    private int mergeProgress = 0;
+    private string uploadMessage = "";
+    private bool uploadSuccess = false;
+
+    // Chunk size: 10MB
+    private const int ChunkSize = 10 * 1024 * 1024;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVideos();
+        await LoadMergeJobs();
+    }
+
+    private void HandleFileSelection(InputFileChangeEventArgs e)
+    {
+        selectedFiles = e.GetMultipleFiles(20).ToList();
+        uploadMessage = "";
+    }
+
+    private void RemoveFile(IBrowserFile file)
+    {
+        selectedFiles.Remove(file);
+    }
+
+    private async Task UploadVideos()
+    {
+        if (!selectedFiles.Any()) return;
+
+        isUploading = true;
+        uploadProgress = 0;
+        uploadMessage = "";
+
+        try
+        {
+            for (int i = 0; i < selectedFiles.Count; i++)
+            {
+                var file = selectedFiles[i];
+                await UploadFileInChunks(file);
+                uploadProgress = (int)(((i + 1) / (double)selectedFiles.Count) * 100);
+            }
+
+            uploadSuccess = true;
+            uploadMessage = $"Successfully uploaded {selectedFiles.Count} video(s)!";
+            selectedFiles.Clear();
+            await LoadVideos();
+        }
+        catch (Exception ex)
+        {
+            uploadSuccess = false;
+            uploadMessage = $"Upload failed: {ex.Message}";
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+
+    private async Task UploadFileInChunks(IBrowserFile file)
+    {
+        var uploadId = Guid.NewGuid().ToString();
+        var totalChunks = (int)Math.Ceiling((double)file.Size / ChunkSize);
+
+        for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
+        {
+            var offset = chunkIndex * ChunkSize;
+            var chunkLength = Math.Min(ChunkSize, file.Size - offset);
+
+            using var stream = file.OpenReadStream(maxAllowedSize: file.Size);
+            stream.Seek(offset, SeekOrigin.Begin);
+
+            var chunkData = new byte[chunkLength];
+            await stream.ReadAsync(chunkData, 0, (int)chunkLength);
+
+            var content = new MultipartFormDataContent();
+            content.Add(new StringContent(uploadId), "uploadId");
+            content.Add(new StringContent(chunkIndex.ToString()), "chunkIndex");
+            content.Add(new StringContent(totalChunks.ToString()), "totalChunks");
+            content.Add(new ByteArrayContent(chunkData), "chunk", file.Name);
+
+            var response = await Http.PostAsync("api/video/upload-chunk", content);
+            response.EnsureSuccessStatusCode();
+        }
+
+        // Finalize upload
+        var finalizeContent = new StringContent(
+            JsonSerializer.Serialize(new { uploadId, totalChunks }),
+            System.Text.Encoding.UTF8,
+            "application/json");
+
+        var finalizeResponse = await Http.PostAsync("api/video/finalize-upload", finalizeContent);
+        finalizeResponse.EnsureSuccessStatusCode();
+    }
+
+    private async Task LoadVideos()
+    {
+        isLoading = true;
+        try
+        {
+            var response = await Http.GetAsync("api/video?pageSize=100");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<VideoListResponse>();
+                videos = result?.Videos ?? new List<VideoDto>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load videos: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadMergeJobs()
+    {
+        try
+        {
+            var response = await Http.GetAsync("api/video/merge-jobs?pageSize=20");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<MergeJobListResponse>();
+                mergeJobs = result?.Jobs ?? new List<MergeJobDto>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load merge jobs: {ex.Message}");
+        }
+    }
+
+    private void ToggleVideoSelection(int videoId)
+    {
+        if (selectedVideoIds.Contains(videoId))
+            selectedVideoIds.Remove(videoId);
+        else
+            selectedVideoIds.Add(videoId);
+    }
+
+    private TimeSpan GetTotalDuration()
+    {
+        return TimeSpan.FromSeconds(
+            videos.Where(v => selectedVideoIds.Contains(v.Id))
+                  .Sum(v => v.Duration.TotalSeconds));
+    }
+
+    private async Task MergeVideos()
+    {
+        if (selectedVideoIds.Count < 2) return;
+
+        isMerging = true;
+        mergeProgress = 0;
+
+        try
+        {
+            var content = new StringContent(
+                JsonSerializer.Serialize(new { videoIds = selectedVideoIds }),
+                System.Text.Encoding.UTF8,
+                "application/json");
+
+            var response = await Http.PostAsync("api/video/merge", content);
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<MergeJobCreateResponse>();
+
+            // Poll for job status
+            if (result?.Job?.Id > 0)
+            {
+                await PollMergeJobStatus(result.Job.Id);
+            }
+
+            selectedVideoIds.Clear();
+            await LoadVideos();
+            await LoadMergeJobs();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Merge failed: {ex.Message}");
+        }
+        finally
+        {
+            isMerging = false;
+        }
+    }
+
+    private async Task PollMergeJobStatus(int jobId)
+    {
+        while (isMerging)
+        {
+            await Task.Delay(2000); // Poll every 2 seconds
+
+            try
+            {
+                var response = await Http.GetAsync($"api/video/merge-job/{jobId}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<MergeJobStatusResponse>();
+                    if (result?.Job != null)
+                    {
+                        mergeProgress = result.Job.Progress;
+
+                        if (result.Job.Status == "Completed" || result.Job.Status == "Failed")
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+    }
+
+    private async Task DeleteVideo(int id)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this video?"))
+            return;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"api/video/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadVideos();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Delete failed: {ex.Message}");
+        }
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalHours >= 1)
+            return $"{(int)duration.TotalHours}:{duration.Minutes:D2}:{duration.Seconds:D2}";
+        return $"{duration.Minutes}:{duration.Seconds:D2}";
+    }
+
+    // DTOs
+    private class VideoDto
+    {
+        public int Id { get; set; }
+        public string FileName { get; set; } = "";
+        public TimeSpan Duration { get; set; }
+        public string? Resolution { get; set; }
+        public long FileSizeBytes { get; set; }
+        public string Status { get; set; } = "";
+        public string? MergedVideoPath { get; set; }
+    }
+
+    private class MergeJobDto
+    {
+        public int Id { get; set; }
+        public string Status { get; set; } = "";
+        public int Progress { get; set; }
+        public List<int> VideoIds { get; set; } = new();
+        public TimeSpan TotalDuration { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+
+    private class VideoListResponse
+    {
+        public List<VideoDto> Videos { get; set; } = new();
+    }
+
+    private class MergeJobListResponse
+    {
+        public List<MergeJobDto> Jobs { get; set; } = new();
+    }
+
+    private class MergeJobCreateResponse
+    {
+        public MergeJobDto? Job { get; set; }
+    }
+
+    private class MergeJobStatusResponse
+    {
+        public MergeJobDto? Job { get; set; }
+    }
+}
+
+<style>
+    .container {
+        padding: 20px;
+    }
+
+    .upload-section, .video-list-section, .merge-jobs-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+    }
+
+    .file-list {
+        margin: 15px 0;
+    }
+
+    .file-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        border: 1px solid #eee;
+        margin: 5px 0;
+        border-radius: 4px;
+    }
+
+    .video-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+    }
+
+    .video-card {
+        border: 2px solid #ddd;
+        padding: 15px;
+        border-radius: 8px;
+        transition: border-color 0.3s;
+    }
+
+    .video-card.selected {
+        border-color: #007bff;
+        background-color: #e7f3ff;
+    }
+
+    .video-info {
+        margin: 10px 0;
+    }
+
+    .video-info p {
+        margin: 5px 0;
+        font-size: 14px;
+    }
+
+    .merge-section {
+        margin-top: 20px;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .jobs-list {
+        display: grid;
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .job-card {
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 8px;
+        background-color: #fff;
+    }
+
+    .job-card p {
+        margin: 5px 0;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        margin: 5px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .alert-success {
+        padding: 15px;
+        margin: 15px 0;
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        border-radius: 4px;
+        color: #155724;
+    }
+
+    .alert-error {
+        padding: 15px;
+        margin: 15px 0;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+        color: #721c24;
+    }
+
+    .error {
+        color: #dc3545;
+    }
+</style>

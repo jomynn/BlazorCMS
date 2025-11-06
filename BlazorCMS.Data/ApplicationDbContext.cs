@@ -55,5 +55,7 @@ namespace BlazorCMS.Data
 
         public DbSet<BlogPost> BlogPosts { get; set; }
         public DbSet<Page> Pages { get; set; }
+        public DbSet<Video> Videos { get; set; }
+        public DbSet<VideoMergeJob> VideoMergeJobs { get; set; }
     }
 }

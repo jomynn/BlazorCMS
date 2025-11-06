@@ -4,6 +4,7 @@ using BlazorCMS.Data.Models;
 using BlazorCMS.Data.Repositories;
 using BlazorCMS.Infrastructure.Authentication;
 using BlazorCMS.Infrastructure.Logging;
+using BlazorCMS.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -77,6 +78,11 @@ try
     builder.Services.AddScoped<BlogService>();
     builder.Services.AddScoped<PageService>();
     builder.Services.AddScoped<DatabaseInitializer>();
+
+    // ✅ Register Video Services
+    builder.Services.AddScoped<IVideoMergeService, VideoMergeService>();
+    builder.Services.AddScoped<IChunkedUploadService, ChunkedUploadService>();
+
     builder.Services.AddAuthorization();
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
